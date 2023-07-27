@@ -4,53 +4,55 @@ import Header from './components/Header';
 import ProductList from './components/ProductList';
 import ProductDetails from './components/ProductDetails';
 import ShoppingCart from './components/ShoppingCart';
+import Checkout from './components/Checkout';
 import NotFound from './components/NotFound';
 import { fetchProducts } from './data/products';
-
-import './styles/main.min.css';
 
 const App = () => {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]); // New state for filtered products
 
   useEffect(() => {
-    const fetchData = async () => {
-      const data = await fetchProducts();
+    fetchProducts().then((data) => {
       setProducts(data);
-    };
-    fetchData();
+      setFilteredProducts(data); // Initialize filtered products with all products
+    });
   }, []);
 
   const handleAddToCart = (product) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === product.id);
-      if (existingItem) {
-        return prevCart.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      } else {
-        return [...prevCart, { ...product, quantity: 1 }];
-      }
-    });
+    setCart((prevCart) => [...prevCart, product]);
   };
 
   const handleRemoveFromCart = (productId) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
   };
 
+  const handleSearch = (searchTerm) => {
+    if (searchTerm.trim() === '') {
+      // If the search term is empty, reset the filtered products list to all products
+      setFilteredProducts(products);
+    } else {
+      // If the search term is not empty, filter the products based on the search term
+      const filteredProducts = products.filter((product) =>
+        product.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredProducts(filteredProducts);
+    }
+  };
+
   return (
     <Router>
-      <Header cartItems={cart} />
+      <Header onSearch={handleSearch} />
       <Switch>
         <Route exact path="/">
-          <ProductList products={products} handleAddToCart={handleAddToCart} />
+          <ProductList products={filteredProducts} onAddToCart={handleAddToCart} />
         </Route>
-        <Route path="/product/:id">
-          <ProductDetails handleAddToCart={handleAddToCart} />
-        </Route>
+        <Route path="/product/:id" component={ProductDetails} />
         <Route path="/cart">
-          <ShoppingCart cartItems={cart} handleRemoveFromCart={handleRemoveFromCart} />
+          <ShoppingCart cartItems={cart} onRemoveFromCart={handleRemoveFromCart} />
         </Route>
+        <Route path="/checkout" component={Checkout} />
         <Route component={NotFound} />
       </Switch>
     </Router>

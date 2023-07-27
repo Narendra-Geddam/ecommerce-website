@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const Header = () => {
+const Header = ({ onSearch }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const handleSearch = () => {
+    onSearch(searchTerm);
+  };
+
   return (
     <header>
-      <div className="logo">
-        <Link to="/">E-commerce</Link>
-      </div>
       <nav>
         <ul>
           <li>
@@ -16,6 +23,10 @@ const Header = () => {
             <Link to="/cart">Cart</Link>
           </li>
         </ul>
+        <div>
+          <input type="text" value={searchTerm} onChange={handleChange} />
+          <button onClick={handleSearch}>Search</button>
+        </div>
       </nav>
     </header>
   );
