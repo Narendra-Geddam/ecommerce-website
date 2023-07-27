@@ -32,8 +32,8 @@ const Header = ({ onSearch, cartItemCount, onSortChange }) => {
         <div>
           {/* Add the sorting select element */}
           <select value={sortOption} onChange={handleSortChange}>
-            <option value="asc">Low to High</option>
-            <option value="desc">High to Low</option>
+            <option value="asc">High to Low</option>
+            <option value="desc">Low to High</option>
           </select>
 
           <input type="text" value={searchTerm} onChange={handleChange} />
