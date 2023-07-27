@@ -1,18 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { fetchProducts } from '../data/products';
+import React from 'react';
 
-const ProductList = () => {
-  const [products, setProducts] = useState([]);
-
-  useEffect(() => {
-    fetchProducts()
-      .then((data) => setProducts(data))
-      .catch((error) => console.error('Error fetching products:', error));
-  }, []);
-
+const ProductList = ({ products, onAddToCart }) => {
   const handleAddToCart = (product) => {
-    // Implement the logic to add the product to the cart here
-    console.log('Product added to cart:', product);
+    onAddToCart(product);
   };
 
   return (

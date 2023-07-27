@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const Header = ({ onSearch }) => {
+const Header = ({ onSearch, cartItemCount }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleChange = (event) => {
@@ -20,7 +20,7 @@ const Header = ({ onSearch }) => {
             <Link to="/">Home</Link>
           </li>
           <li>
-            <Link to="/cart">Cart</Link>
+            <Link to="/cart">Cart ({cartItemCount})</Link>
           </li>
         </ul>
         <div>

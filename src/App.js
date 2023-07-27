@@ -11,12 +11,12 @@ import { fetchProducts } from './data/products';
 const App = () => {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]); // New state for filtered products
+  const [filteredProducts, setFilteredProducts] = useState([]);
 
   useEffect(() => {
     fetchProducts().then((data) => {
       setProducts(data);
-      setFilteredProducts(data); // Initialize filtered products with all products
+      setFilteredProducts(data);
     });
   }, []);
 
@@ -28,22 +28,20 @@ const App = () => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
   };
 
-  const handleSearch = (searchTerm) => {
-    if (searchTerm.trim() === '') {
-      // If the search term is empty, reset the filtered products list to all products
+  const handleSearch = (searchText) => {
+    if (!searchText) {
       setFilteredProducts(products);
     } else {
-      // If the search term is not empty, filter the products based on the search term
-      const filteredProducts = products.filter((product) =>
-        product.title.toLowerCase().includes(searchTerm.toLowerCase())
+      const filtered = products.filter((product) =>
+        product.title.toLowerCase().includes(searchText.toLowerCase())
       );
-      setFilteredProducts(filteredProducts);
+      setFilteredProducts(filtered);
     }
   };
 
   return (
     <Router>
-      <Header onSearch={handleSearch} />
+      <Header onSearch={handleSearch} cartItemCount={cart.length} />
       <Switch>
         <Route exact path="/">
           <ProductList products={filteredProducts} onAddToCart={handleAddToCart} />
