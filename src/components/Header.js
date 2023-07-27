@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const Header = ({ onSearch, cartItemCount }) => {
+const Header = ({ onSearch, cartItemCount, onSortChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState('asc'); // State for sorting
 
   const handleChange = (event) => {
     setSearchTerm(event.target.value);
@@ -10,6 +11,11 @@ const Header = ({ onSearch, cartItemCount }) => {
 
   const handleSearch = () => {
     onSearch(searchTerm);
+  };
+
+  const handleSortChange = (event) => {
+    setSortOption(event.target.value);
+    onSortChange(event.target.value); // Call the parent component's sort function
   };
 
   return (
@@ -24,6 +30,12 @@ const Header = ({ onSearch, cartItemCount }) => {
           </li>
         </ul>
         <div>
+          {/* Add the sorting select element */}
+          <select value={sortOption} onChange={handleSortChange}>
+            <option value="asc">Low to High</option>
+            <option value="desc">High to Low</option>
+          </select>
+
           <input type="text" value={searchTerm} onChange={handleChange} />
           <button onClick={handleSearch}>Search</button>
         </div>

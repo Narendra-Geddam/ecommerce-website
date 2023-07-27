@@ -39,9 +39,20 @@ const App = () => {
     }
   };
 
+  const handleSortChange = (sortOption) => {
+    // Sort the products based on the selected sorting option
+    const sortedProducts = [...filteredProducts];
+    if (sortOption === 'desc') {
+      sortedProducts.sort((a, b) => b.id - a.id);
+    } else {
+      sortedProducts.sort((a, b) => a.id - b.id);
+    }
+    setFilteredProducts(sortedProducts);
+  };
+
   return (
     <Router>
-      <Header onSearch={handleSearch} cartItemCount={cart.length} />
+      <Header onSearch={handleSearch} cartItemCount={cart.length} onSortChange={handleSortChange} />
       <Switch>
         <Route exact path="/">
           <ProductList products={filteredProducts} onAddToCart={handleAddToCart} />
