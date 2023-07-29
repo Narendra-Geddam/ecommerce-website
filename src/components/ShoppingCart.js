@@ -26,7 +26,7 @@ const ShoppingCart = ({ cartItems, onRemoveFromCart }) => {
               </li>
             ))}
           </ul>
-          <p>Total: ${getTotalCost()}</p>
+          <h3>Total: ${getTotalCost()}</h3>
         </div>
       )}
     </div>

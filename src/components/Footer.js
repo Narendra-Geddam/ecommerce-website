@@ -1,3 +1,5 @@
+//! OG Creator - @narendra
+
 import React from 'react';
 
 const Footer = () => {
