@@ -3,7 +3,7 @@
 /* Container for the product grid */
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* Four columns with equal width */
+    grid-template-columns: repeat(3, 1fr); /* Four columns with equal width */
     gap: 20px; /* Gap between grid items */
   }
   
@@ -16,8 +16,8 @@
   
   /* Product image */
   .product-image {
-    width: 100%; /* Adjust the width of the product image as needed */
-    max-height: 200px; /* Limit the height of the product image */
+    width: 400px; /* Adjust the width of the product image as needed */
+    height: 400px; /* Limit the height of the product image */
     object-fit: cover; /* Preserve aspect ratio and cover the entire container */
   }
   
