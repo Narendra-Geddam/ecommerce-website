@@ -139,3 +139,48 @@ h3.total {
   text-align: center;
   margin-top: 20px;
 }
+
+
+/* checkout container */
+
+.checkout-container {
+  width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-family: Arial, sans-serif;
+}
+
+.checkout-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.checkout-form label {
+  margin-bottom: 10px;
+}
+
+.checkout-form input[type="text"] {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.checkout-form button {
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.submitted-details {
+  margin-top: 20px;
+}
+
+.submitted-details p {
+  margin-bottom: 10px;
+  font-weight: bold;
+}
