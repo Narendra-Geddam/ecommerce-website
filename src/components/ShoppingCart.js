@@ -1,4 +1,5 @@
 import React from 'react';
+import Checkout from './Checkout';
 
 const ShoppingCart = ({ cartItems, onRemoveFromCart }) => {
   const handleRemoveFromCart = (productId) => {
@@ -27,6 +28,7 @@ const ShoppingCart = ({ cartItems, onRemoveFromCart }) => {
             ))}
           </ul>
           <h3>Total: ${getTotalCost()}</h3>
+          <Checkout />
         </div>
       )}
     </div>

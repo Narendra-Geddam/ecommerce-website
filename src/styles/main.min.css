@@ -1,49 +1,68 @@
-/* main.min.css */
-
-/* Container for the product grid */
 .product-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Four columns with equal width */
-    gap: 20px; /* Gap between grid items */
-  }
-  
-  /* Individual product item in the grid */
-  .product-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  /* Product image */
-  .product-image {
-    width: 400px; /* Adjust the width of the product image as needed */
-    height: 400px; /* Limit the height of the product image */
-    object-fit: cover; /* Preserve aspect ratio and cover the entire container */
-  }
-  
-  /* Product title */
-  .product-title {
-    font-size: 16px; /* Adjust font size as needed */
-    margin-top: 10px; /* Add spacing between image and title */
-  }
-  
-  /* Product price */
-  .product-price {
-    font-size: 14px; /* Adjust font size as needed */
-    margin-top: 5px; /* Add spacing between title and price */
-  }
-  
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* Four columns with equal width */
+  gap: 20px; /* Gap between grid items */
+}
+
+/* Individual product item in the grid */
+.product-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Add a subtle box shadow for depth */
+  transition: transform 0.3s ease-in-out; /* Add a smooth transform effect on hover */
+  height: 100%; /* Set a fixed height for the product card */
+}
+
+.product-item:hover {
+  transform: translateY(-5px); /* Slight upward translation on hover */
+}
+
+/* Product image */
+.product-image {
+  width: 100%; /* Adjust the width of the product image to fill the container */
+  height: 200px; /* Set a fixed height for the product image */
+  object-fit: contain; /* Show the full image without cropping */
+  border-radius: 8px; /* Rounded corners */
+  margin-bottom: 10px; /* Add some space between the image and other elements */
+}
+
+/* Product title */
+.product-title {
+  font-size: 16px;
+  font-weight: 500; /* Add a bit of boldness to the title */
+  margin-top: 10px;
+}
+
+/* Product price */
+.product-price {
+  font-size: 14px;
+  font-weight: 600; /* Make the price stand out */
+  margin-top: 5px;
+}
+
 /* "Add to Cart" button */
 .add-to-cart-button {
-    background-color: #007bff; /* Adjust button color as needed */
-    color: #fff; /* Button text color */
-    border: none;
-    padding: 8px 16px; /* Adjust padding as needed */
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s ease-in-out;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+}
+
+.add-to-cart-button:hover {
+  background-color: #0056b3;
+}
+
+/* Responsive adjustments for smaller screens */
+@media screen and (max-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr); /* Two columns on smaller screens */
   }
-  
-  .add-to-cart-button:hover {
-    background-color: #0056b3; /* Adjust hover color as needed */
-  }  
+}
