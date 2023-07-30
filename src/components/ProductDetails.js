@@ -1,3 +1,4 @@
+//! OG Creator - @narendra
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchProducts } from '../data/products'; // Import the fetchProducts function

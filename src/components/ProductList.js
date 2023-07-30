@@ -1,3 +1,4 @@
+//! OG Creator - @narendra
 import React from 'react';
 
 const ProductList = ({ products, onAddToCart }) => {

@@ -1,4 +1,4 @@
-// ShoppingCart.js
+//! OG Creator - @narendra
 
 import React from 'react';
 import Checkout from './Checkout';
