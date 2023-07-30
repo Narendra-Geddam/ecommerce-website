@@ -1,3 +1,5 @@
+//! OG Creator - @narendra
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -8,7 +10,9 @@ import cartImage from '../assets/images/carts.png';
 // importing StyleSheet and View for adding elements
 import { StyleSheet, View } from '@react-pdf/renderer';
 
+// Define styles using React-pdf/renderer's StyleSheet
 const styles = StyleSheet.create({
+  // CSS styles for the header
   header: {
     display: 'flex',
     alignItems: 'center',
@@ -25,13 +29,11 @@ const styles = StyleSheet.create({
     height: 50,
     marginRight: 30,
   },
-
   cart: {
     width: 50,
     height: 50,
     marginRight: 30,
   },
-
   brandName: {
     fontSize: 28,
     fontWeight: 700,
@@ -101,35 +103,37 @@ const styles = StyleSheet.create({
   },
 });
 
+// Header component that displays the website header including logo, search, and navigation.
 const Header = ({ onSearch, cartItemCount, onSortChange }) => {
+  // State variables to handle user input and button hover effect.
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState('asc');
+  const [isButtonHovered, setButtonHovered] = useState(false);
 
+  // Function to handle changes in the search input.
   const handleChange = (event) => {
     setSearchTerm(event.target.value);
   };
 
+  // Function to handle search button click.
   const handleSearch = () => {
     onSearch(searchTerm);
   };
 
+  // Function to handle changes in the sorting select element.
   const handleSortChange = (event) => {
     setSortOption(event.target.value);
     onSortChange(event.target.value);
   };
 
-  // Add state to handle the button hover effect
-  const [isButtonHovered, setButtonHovered] = useState(false);
-
   return (
     <header style={styles.header}>
       <View style={styles.logoSection}>
-        {/* Logo component */}
+        {/* Display the logo component */}
         <img src={logoImage} alt="Logo" style={styles.logo} />
         <div style={styles.brandName}>SuperMartX</div>
       </View>
       <nav style={styles.navItems}>
-
         {/* Search and Sort option */}
         <View style={styles.searchSort}>
           <View style={styles.searchBar}>
@@ -148,7 +152,6 @@ const Header = ({ onSearch, cartItemCount, onSortChange }) => {
               Search
             </button>
           </View>
-
           <View style={styles.sortOption}>
             {/* Add the sorting select element */}
             <select style={styles.select} value={sortOption} onChange={handleSortChange}>
@@ -157,13 +160,14 @@ const Header = ({ onSearch, cartItemCount, onSortChange }) => {
             </select>
           </View>
         </View>
-
         <ul style={styles.ul}>
+          {/* Navigation links */}
           <li style={styles.li}>
             <Link style={styles.link} to="/">Home</Link>
           </li>
           <li style={styles.li}>
             <Link style={styles.link} to="/cart">
+              {/* Display the cart image and item count */}
               <img src={cartImage} alt="Cart" style={styles.cart} /> ({cartItemCount})
             </Link>
           </li>
