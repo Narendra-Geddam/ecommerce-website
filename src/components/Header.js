@@ -1,28 +1,28 @@
 //! OG Creator - @narendra
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 
 // Importing Logo Image to Header
-import logoImage from '../assets/images/logo.png';
-import cartImage from '../assets/images/carts.png';
+import logoImage from "../assets/images/logo.png";
+import cartImage from "../assets/images/carts.png";
 
 // importing StyleSheet and View for adding elements
-import { StyleSheet, View } from '@react-pdf/renderer';
+import { StyleSheet, View } from "@react-pdf/renderer";
 
 // Define styles using React-pdf/renderer's StyleSheet
 const styles = StyleSheet.create({
   // CSS styles for the header
   header: {
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    padding: '20px 10px',
-    borderBottom: '1px solid #ccc',
+    display: "flex",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    padding: "20px 10px",
+    borderBottom: "1px solid #ccc",
   },
   logoSection: {
-    display: 'flex',
-    alignItems: 'center',
+    display: "flex",
+    alignItems: "center",
   },
   logo: {
     width: 65,
@@ -37,77 +37,77 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 28,
     fontWeight: 700,
-    fontFamily: 'Arial, sans-serif',
+    fontFamily: "Arial, sans-serif",
   },
   navItems: {
     flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
     fontSize: 24,
   },
   ul: {
-    display: 'flex',
-    alignItems: 'center',
-    listStyle: 'none',
+    display: "flex",
+    alignItems: "center",
+    listStyle: "none",
     margin: 0,
     padding: 0,
   },
   li: {
-    marginLeft: '20px', // Use margin-left instead of margin-right for spacing
+    marginLeft: "20px", // Use margin-left instead of margin-right for spacing
   },
   searchSort: {
-    display: 'flex',
-    alignItems: 'center',
+    display: "flex",
+    alignItems: "center",
   },
   searchBar: {
-    marginLeft: '20px', // Adjust the margin as needed
-    display: 'flex',
-    alignItems: 'center',
+    marginLeft: "20px", // Adjust the margin as needed
+    display: "flex",
+    alignItems: "center",
   },
   searchInput: {
     fontSize: 16,
-    border: '1px solid #ccc',
+    border: "1px solid #ccc",
     borderRadius: 5,
-    backgroundColor: '#ffffff',
-    padding: '8px 12px',
+    backgroundColor: "#ffffff",
+    padding: "8px 12px",
     minWidth: 250,
   },
   searchButton: {
-    marginLeft: '10px',
-    padding: '8px 12px',
-    background: '#007bff',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    fontSize: '16px',
-    transition: 'background-color 0.3s ease-in-out',
+    marginLeft: "10px",
+    padding: "8px 12px",
+    background: "#007bff",
+    color: "#fff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontSize: "16px",
+    transition: "background-color 0.3s ease-in-out",
   },
   searchButtonHover: {
-    background: '#0056b3',
+    background: "#0056b3",
   },
   sortOption: {
-    marginLeft: '20px', // Adjust the margin as needed
-    display: 'flex',
-    alignItems: 'center',
+    marginLeft: "20px", // Adjust the margin as needed
+    display: "flex",
+    alignItems: "center",
   },
   select: {
     fontSize: 16,
-    border: '1px solid #ccc',
-    padding: '8px 12px',
+    border: "1px solid #ccc",
+    padding: "8px 12px",
   },
   link: {
-    textDecoration: 'none',
-    color: '#333',
+    textDecoration: "none",
+    color: "#333",
   },
 });
 
 // Header component that displays the website header including logo, search, and navigation.
 const Header = ({ onSearch, cartItemCount, onSortChange }) => {
   // State variables to handle user input and button hover effect.
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOption, setSortOption] = useState('asc');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("asc");
   const [isButtonHovered, setButtonHovered] = useState(false);
 
   // Function to handle changes in the search input.
@@ -120,7 +120,7 @@ const Header = ({ onSearch, cartItemCount, onSortChange }) => {
     onSearch(searchTerm);
   };
 
-  // Function to handle changes in the sorting select element.
+  // Function to handle changes in the sorting select element. Demigod
   const handleSortChange = (event) => {
     setSortOption(event.target.value);
     onSortChange(event.target.value);
@@ -144,7 +144,10 @@ const Header = ({ onSearch, cartItemCount, onSortChange }) => {
               onChange={handleChange}
             />
             <button
-              style={{ ...styles.searchButton, ...(isButtonHovered && styles.searchButtonHover) }}
+              style={{
+                ...styles.searchButton,
+                ...(isButtonHovered && styles.searchButtonHover),
+              }}
               onClick={handleSearch}
               onMouseEnter={() => setButtonHovered(true)}
               onMouseLeave={() => setButtonHovered(false)}
@@ -154,7 +157,11 @@ const Header = ({ onSearch, cartItemCount, onSortChange }) => {
           </View>
           <View style={styles.sortOption}>
             {/* Add the sorting select element */}
-            <select style={styles.select} value={sortOption} onChange={handleSortChange}>
+            <select
+              style={styles.select}
+              value={sortOption}
+              onChange={handleSortChange}
+            >
               <option value="asc">High to Low</option>
               <option value="desc">Low to High</option>
             </select>
@@ -163,12 +170,15 @@ const Header = ({ onSearch, cartItemCount, onSortChange }) => {
         <ul style={styles.ul}>
           {/* Navigation links */}
           <li style={styles.li}>
-            <Link style={styles.link} to="/">Home</Link>
+            <Link style={styles.link} to="/">
+              Home
+            </Link>
           </li>
           <li style={styles.li}>
             <Link style={styles.link} to="/cart">
               {/* Display the cart image and item count */}
-              <img src={cartImage} alt="Cart" style={styles.cart} /> ({cartItemCount})
+              <img src={cartImage} alt="Cart" style={styles.cart} /> (
+              {cartItemCount})
             </Link>
           </li>
         </ul>
