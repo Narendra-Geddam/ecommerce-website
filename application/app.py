@@ -510,8 +510,35 @@ def get_order(order_id):
 
 @app.route('/health')
 def health():
-    """Health check endpoint"""
-    return jsonify({'status': 'healthy'})
+    """Health check endpoint for liveness probe"""
+    return jsonify({'status': 'healthy', 'service': 'flask'})
+
+@app.route('/ready')
+def ready():
+    """Readiness probe - checks if app can receive traffic (database connection)"""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('SELECT 1')
+        cur.close()
+        conn.close()
+        return jsonify({
+            'status': 'ready',
+            'service': 'flask',
+            'database': 'connected'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'not_ready',
+            'service': 'flask',
+            'database': 'disconnected',
+            'error': str(e)
+        }), 503
+
+@app.route('/live')
+def live():
+    """Liveness probe - checks if the process is running"""
+    return jsonify({'status': 'alive', 'service': 'flask'})
 
 # Monitoring API Endpoints
 @app.route('/api/monitor/requests')

@@ -339,8 +339,129 @@ ecommerce-website/
 <td><code>/api/monitor/stats</code></td>
 <td>📊 Aggregate statistics</td>
 </tr>
+<tr>
+<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
+<td><code>/health</code></td>
+<td>💚 Liveness probe (is container running?)</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
+<td><code>/ready</code></td>
+<td>💜 Readiness probe (can container receive traffic?)</td>
+</tr>
+<tr>
+<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
+<td><code>/live</code></td>
+<td>💗 Simple liveness check</td>
+</tr>
 </tbody>
 </table>
+
+---
+
+<div align="center">
+
+## 💚 Health Checks & Probes
+
+</div>
+
+<table>
+<tr>
+<td width="50%">
+
+### 🔍 Docker Health Checks
+
+All services include Docker health checks:
+
+```yaml
+# Nginx (Presentation)
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 10s
+
+# Flask (Application)
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:5000/ready"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 20s
+
+# PostgreSQL (Database)
+healthcheck:
+  test: ["CMD-SHELL", "pg_isready -U ecommerce"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 10s
+```
+
+</td>
+<td width="50%">
+
+### ☸️ Kubernetes Probes
+
+```yaml
+# Liveness Probe - Restart if unhealthy
+livenessProbe:
+  httpGet:
+    path: /live
+    port: 5000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness Probe - Route traffic when ready
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Startup Probe - For slow starting containers
+startupProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 30
+```
+
+</td>
+</tr>
+</table>
+
+<div align="center">
+
+### 🏥 Health Check Endpoints
+
+</div>
+
+| Endpoint | Purpose | Response |
+|----------|---------|----------|
+| `GET /health` | **Liveness** - Is the service running? | `{"status":"healthy","service":"nginx"}` |
+| `GET /ready` | **Readiness** - Can handle traffic + DB connected? | `{"status":"ready","database":"connected"}` |
+| `GET /live` | **Simple Liveness** - Basic alive check | `{"status":"alive","service":"flask"}` |
+
+```bash
+# Test health endpoints
+curl http://localhost/health     # Nginx liveness
+curl http://localhost/ready      # Backend readiness (proxied)
+curl http://localhost/live        # Nginx alive check
+
+# Direct backend health
+curl http://localhost:5000/health
+curl http://localhost:5000/ready
+curl http://localhost:5000/live
+```
 
 ---
 
