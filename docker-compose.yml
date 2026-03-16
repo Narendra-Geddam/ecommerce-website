@@ -8,6 +8,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "80:80"
+    environment:
+      - SERVICE_NAME=nginx
+      - SERVICE_TIER=frontend
+      - REPLICAS=1
     depends_on:
       - application
     networks:
@@ -24,6 +28,9 @@ services:
       - DATABASE_URL=postgresql://ecommerce:password@database:5432/ecommerce
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY:-your_production_secret_key_here}
+      - SERVICE_NAME=flask
+      - SERVICE_TIER=backend
+      - REPLICAS=1
     depends_on:
       database:
         condition: service_healthy
@@ -39,6 +46,9 @@ services:
       - POSTGRES_USER=ecommerce
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=ecommerce
+      - SERVICE_NAME=postgres
+      - SERVICE_TIER=database
+      - REPLICAS=1
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./data/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
