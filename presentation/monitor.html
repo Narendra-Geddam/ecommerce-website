@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Dashboard - ShopEasy</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #0f0f23;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #1a1a3e 0%, #0f0f23 100%);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #2a2a4a;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: white;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        nav a {
+            color: #b0b0d0;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+
+        nav a:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        /* Main Content */
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .page-title span {
+            color: #667eea;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1a1a3e 0%, #252550 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #2a2a4a;
+        }
+
+        .stat-card h3 {
+            font-size: 0.85rem;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .subtitle {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .stat-card.error .value {
+            color: #e74c3c;
+        }
+
+        .stat-card.success .value {
+            color: #27ae60;
+        }
+
+        /* Services Panel */
+        .panel {
+            background: linear-gradient(135deg, #1a1a3e 0%, #252550 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #2a2a4a;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #2a2a4a;
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-badge {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        /* Services Grid */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .service-card {
+            background: #0f0f23;
+            border-radius: 10px;
+            padding: 1rem;
+            border: 1px solid #2a2a4a;
+            transition: all 0.3s;
+        }
+
+        .service-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .service-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .service-icon {
+            font-size: 1.5rem;
+        }
+
+        .service-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .service-status.healthy {
+            background: rgba(39, 174, 96, 0.2);
+            color: #27ae60;
+        }
+
+        .service-status.unhealthy {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+        }
+
+        .service-details {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .service-details p {
+            margin-bottom: 0.25rem;
+        }
+
+        .service-latency {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .container-info {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #2a2a4a;
+        }
+
+        .container-info .label {
+            color: #666;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .container-info .value {
+            color: #9b59b6;
+            font-family: monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+        }
+
+        .replicas-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .pod-name {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        /* Pods/Containers Panel */
+        .pods-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1rem;
+        }
+
+        .pod-card {
+            background: #0f0f23;
+            border-radius: 10px;
+            padding: 1rem;
+            border: 1px solid #2a2a4a;
+        }
+
+        .pod-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .pod-name-large {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .pod-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pod-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #27ae60;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pod-status-dot.unhealthy {
+            background: #e74c3c;
+        }
+
+        .pod-meta {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .pod-meta-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .pod-meta-item .label {
+            color: #666;
+        }
+
+        .pod-meta-item .value {
+            color: #e0e0e0;
+        }
+
+        /* Request Flow Panel */
+        .request-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .request-table th {
+            text-align: left;
+            padding: 0.75rem;
+            color: #888;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid #2a2a4a;
+        }
+
+        .request-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #1a1a3e;
+            font-size: 0.9rem;
+        }
+
+        .request-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .method-badge.GET { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+        .method-badge.POST { background: rgba(52, 152, 219, 0.2); color: #3498db; }
+        .method-badge.PUT { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
+        .method-badge.DELETE { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-badge.success { background: rgba(39, 174, 96, 0.2); color: #27ae60; }
+        .status-badge.redirect { background: rgba(52, 152, 219, 0.2); color: #3498db; }
+        .status-badge.error { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+
+        .duration-fast { color: #27ae60; }
+        .duration-medium { color: #f1c40f; }
+        .duration-slow { color: #e74c3c; }
+
+        /* Architecture Diagram */
+        .architecture {
+            padding: 1rem 0;
+        }
+
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding: 1.5rem 0;
+        }
+
+        .arch-node {
+            background: #0f0f23;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .arch-node.frontend { border-color: #3498db; }
+        .arch-node.backend { border-color: #667eea; }
+        .arch-node.database { border-color: #27ae60; }
+
+        .arch-node .node-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .arch-node .node-name {
+            font-weight: 600;
+            color: white;
+            margin-bottom: 0.25rem;
+        }
+
+        .arch-node .node-port {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .arch-arrow {
+            font-size: 1.5rem;
+            color: #667eea;
+        }
+
+        /* Endpoints Table */
+        .endpoints-table {
+            width: 100%;
+        }
+
+        .endpoints-table th {
+            text-align: left;
+            padding: 0.75rem;
+            color: #888;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid #2a2a4a;
+        }
+
+        .endpoints-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #1a1a3e;
+            font-size: 0.9rem;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .arch-flow {
+                flex-direction: column;
+            }
+
+            .arch-arrow {
+                transform: rotate(90deg);
+            }
+        }
+
+        /* Auto-refresh indicator */
+        .refresh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .refresh-indicator .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #667eea;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .paused .spinner {
+            animation: none;
+            border-color: #888;
+        }
+
+        /* Request ID highlight */
+        .request-id {
+            font-family: monospace;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #667eea;
+        }
+
+        /* Timestamp */
+        .timestamp {
+            color: #666;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="/" class="logo">
+                <span class="logo-icon">📊</span>
+                <h1>Monitoring Dashboard</h1>
+            </a>
+            <nav>
+                <a href="/">🛒 Back to Store</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <h2 class="page-title">Real-time <span>System Monitor</span></h2>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+                <h3>Total Requests</h3>
+                <div class="value" id="total-requests">-</div>
+                <div class="subtitle">Since startup</div>
+            </div>
+            <div class="stat-card">
+                <h3>Avg Response Time</h3>
+                <div class="value" id="avg-latency">-</div>
+                <div class="subtitle">Last 100 requests</div>
+            </div>
+            <div class="stat-card">
+                <h3>Error Rate</h3>
+                <div class="value" id="error-rate">-</div>
+                <div class="subtitle">4xx & 5xx errors</div>
+            </div>
+            <div class="stat-card">
+                <h3>Uptime</h3>
+                <div class="value" id="uptime">-</div>
+                <div class="subtitle">Server uptime</div>
+            </div>
+            <div class="stat-card">
+                <h3>Requests/min</h3>
+                <div class="value" id="rpm">-</div>
+                <div class="subtitle">Average rate</div>
+            </div>
+            <div class="stat-card success">
+                <h3>Active Connections</h3>
+                <div class="value" id="active-conn">3</div>
+                <div class="subtitle">Services running</div>
+            </div>
+        </div>
+
+        <!-- Architecture Diagram -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">🏗️ Architecture Overview</h3>
+                <span class="panel-badge">3-Tier Application</span>
+            </div>
+            <div class="architecture">
+                <div class="arch-flow">
+                    <div class="arch-node frontend">
+                        <div class="node-icon">🌐</div>
+                        <div class="node-name">Nginx</div>
+                        <div class="node-port">Port 80</div>
+                    </div>
+                    <span class="arch-arrow">→</span>
+                    <div class="arch-node backend">
+                        <div class="node-icon">⚡</div>
+                        <div class="node-name">Flask API</div>
+                        <div class="node-port">Port 5000</div>
+                    </div>
+                    <span class="arch-arrow">→</span>
+                    <div class="arch-node database">
+                        <div class="node-icon">🗄️</div>
+                        <div class="node-name">PostgreSQL</div>
+                        <div class="node-port">Port 5432</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Services Status -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">🔍 Service Status</h3>
+                <div class="refresh-indicator" id="refresh-status">
+                    <div class="spinner"></div>
+                    <span>Auto-refresh: 5s</span>
+                </div>
+            </div>
+            <div class="services-grid" id="services-grid">
+                <div class="loading">Loading services...</div>
+            </div>
+        </div>
+
+        <!-- Pods/Containers Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">📦 Running Containers / Pods</h3>
+                <span class="panel-badge" id="container-count">3 containers</span>
+            </div>
+            <div class="pods-grid" id="pods-grid">
+                <div class="loading">Loading containers...</div>
+            </div>
+        </div>
+
+        <!-- Recent Requests -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">📡 Request Flow</h3>
+                <span class="panel-badge" id="request-count">0 requests</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="request-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Method</th>
+                            <th>Path</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Duration</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-table">
+                        <tr><td colspan="7" class="loading">Loading requests...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Endpoints Breakdown -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">📊 Endpoints Performance</h3>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="endpoints-table">
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Requests</th>
+                            <th>Avg Latency</th>
+                            <th>Errors</th>
+                        </tr>
+                    </thead>
+                    <tbody id="endpoints-table">
+                        <tr><td colspan="4" class="loading">Loading endpoints...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = '/api';
+        let autoRefresh = true;
+        let refreshInterval;
+
+        // Fetch and display stats
+        async function fetchStats() {
+            try {
+                const response = await fetch(`${API_URL}/monitor/stats`);
+                const data = await response.json();
+
+                document.getElementById('total-requests').textContent = data.total_requests.toLocaleString();
+                document.getElementById('avg-latency').textContent = `${data.avg_latency_ms}ms`;
+                document.getElementById('error-rate').textContent = `${data.error_rate}%`;
+                document.getElementById('rpm').textContent = data.requests_per_minute.toFixed(1);
+
+                // Format uptime
+                const hours = Math.floor(data.uptime_seconds / 3600);
+                const minutes = Math.floor((data.uptime_seconds % 3600) / 60);
+                document.getElementById('uptime').textContent = `${hours}h ${minutes}m`;
+
+                // Update endpoints table
+                const endpointsTable = document.getElementById('endpoints-table');
+                const endpoints = Object.entries(data.endpoints);
+                if (endpoints.length > 0) {
+                    endpointsTable.innerHTML = endpoints.map(([path, stats]) => `
+                        <tr>
+                            <td><code>${path}</code></td>
+                            <td>${stats.count}</td>
+                            <td class="${getDurationClass(stats.avg_latency)}">${stats.avg_latency}ms</td>
+                            <td class="${stats.errors > 0 ? 'status-badge error' : ''}">${stats.errors}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    endpointsTable.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;">No requests yet</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to fetch stats:', error);
+            }
+        }
+
+        // Fetch and display services
+        async function fetchServices() {
+            try {
+                const response = await fetch(`${API_URL}/monitor/services`);
+                const data = await response.json();
+
+                const servicesGrid = document.getElementById('services-grid');
+                const icons = {
+                    'Nginx': '🌐',
+                    'Flask': '⚡',
+                    'PostgreSQL': '🗄️'
+                };
+
+                servicesGrid.innerHTML = data.services.map(service => `
+                    <div class="service-card">
+                        <div class="service-header">
+                            <div class="service-name">
+                                <span class="service-icon">${icons[service.name] || '📦'}</span>
+                                <span>${service.name}</span>
+                            </div>
+                            <span class="service-status ${service.status}">
+                                ${service.status === 'healthy' ? '✓' : '✕'} ${service.status}
+                            </span>
+                        </div>
+                        <div class="service-details">
+                            <p>Type: ${service.type}</p>
+                            <p>Port: ${service.port}</p>
+                            <p>Latency: <span class="service-latency">${service.latency_ms}ms</span></p>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Update Pods/Containers panel
+                const podsGrid = document.getElementById('pods-grid');
+                const containerInfo = data.container_info || {};
+
+                podsGrid.innerHTML = data.services.map(service => {
+                    const container = service.container || {};
+                    const isHealthy = service.status === 'healthy';
+                    return `
+                        <div class="pod-card">
+                            <div class="pod-header">
+                                <span class="pod-name-large">${container.name || 'unknown'}</span>
+                                <div class="pod-status">
+                                    <div class="pod-status-dot ${isHealthy ? '' : 'unhealthy'}"></div>
+                                    <span>${isHealthy ? 'Running' : 'Error'}</span>
+                                </div>
+                            </div>
+                            <div class="pod-meta">
+                                <div class="pod-meta-item">
+                                    <span class="label">Service</span>
+                                    <span class="value">${service.name}</span>
+                                </div>
+                                <div class="pod-meta-item">
+                                    <span class="label">Tier</span>
+                                    <span class="value">${container.tier || service.type}</span>
+                                </div>
+                                <div class="pod-meta-item">
+                                    <span class="label">Image</span>
+                                    <span class="value">${container.image || '-'}</span>
+                                </div>
+                                <div class="pod-meta-item">
+                                    <span class="label">Port</span>
+                                    <span class="value">${service.port}</span>
+                                </div>
+                                <div class="pod-meta-item">
+                                    <span class="label">Replicas</span>
+                                    <span class="replicas-badge">${container.replicas || 1}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('container-count').textContent = `${data.services.length} containers`;
+
+                // Update active connections stat
+                document.getElementById('active-conn').textContent = data.services.filter(s => s.status === 'healthy').length;
+
+            } catch (error) {
+                console.error('Failed to fetch services:', error);
+                document.getElementById('services-grid').innerHTML =
+                    '<div class="error">Failed to load services. Backend may be down.</div>';
+                document.getElementById('pods-grid').innerHTML =
+                    '<div class="error">Failed to load container info.</div>';
+            }
+        }
+
+        // Fetch and display requests
+        async function fetchRequests() {
+            try {
+                const response = await fetch(`${API_URL}/monitor/requests`);
+                const data = await response.json();
+
+                const requestsTable = document.getElementById('requests-table');
+                document.getElementById('request-count').textContent = `${data.total} requests`;
+
+                if (data.requests.length > 0) {
+                    requestsTable.innerHTML = data.requests.slice().reverse().map(req => `
+                        <tr>
+                            <td><span class="request-id">${req.id}</span></td>
+                            <td><span class="method-badge ${req.method}">${req.method}</span></td>
+                            <td><code>${req.path}</code></td>
+                            <td>${req.description || '-'}</td>
+                            <td><span class="status-badge ${getStatusClass(req.status)}">${req.status}</span></td>
+                            <td class="${getDurationClass(req.duration_ms)}">${req.duration_ms}ms</td>
+                            <td class="timestamp">${formatTime(req.timestamp)}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    requestsTable.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;">No requests yet. Try browsing the store!</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to fetch requests:', error);
+            }
+        }
+
+        // Helper functions
+        function getStatusClass(status) {
+            if (status < 300) return 'success';
+            if (status < 400) return 'redirect';
+            return 'error';
+        }
+
+        function getDurationClass(duration) {
+            if (duration < 100) return 'duration-fast';
+            if (duration < 500) return 'duration-medium';
+            return 'duration-slow';
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString();
+        }
+
+        // Initialize
+        async function init() {
+            await Promise.all([fetchStats(), fetchServices(), fetchRequests()]);
+        }
+
+        // Start auto-refresh
+        function startAutoRefresh() {
+            refreshInterval = setInterval(() => {
+                if (autoRefresh) {
+                    fetchStats();
+                    fetchServices();
+                    fetchRequests();
+                }
+            }, 5000);
+        }
+
+        // Load initial data
+        init();
+        startAutoRefresh();
+
+        // Pause refresh when page is hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                autoRefresh = false;
+            } else {
+                autoRefresh = true;
+                init();
+            }
+        });
+    </script>
+</body>
+</html>

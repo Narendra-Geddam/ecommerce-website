@@ -1,16 +1,32 @@
 import os
-import hashlib
-from flask import Flask, jsonify, request, session, make_response
+import bcrypt
+import time
+import uuid
+import psutil
+import socket
+import platform
+from flask import Flask, jsonify, request, session, make_response, g
 from flask_cors import CORS
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
+from collections import deque
+from threading import Lock
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 
 # Enable CORS for frontend
 CORS(app, supports_credentials=True)
+
+# Request tracking storage
+request_history = deque(maxlen=100)
+request_history_lock = Lock()
+stats = {
+    'total_requests': 0,
+    'total_errors': 0,
+    'start_time': datetime.now()
+}
 
 # Database connection
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://ecommerce:password@database:5432/ecommerce')
@@ -21,7 +37,104 @@ def get_db():
     return conn
 
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash password using bcrypt with automatic salt"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password, hashed):
+    """Verify password against bcrypt hash"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+# Request tracking middleware
+@app.before_request
+def before_request():
+    """Track request start time and generate unique ID"""
+    g.request_id = str(uuid.uuid4())[:8]
+    g.request_start_time = time.time()
+
+def get_request_description(method, path):
+    """Get a human-readable description of what the request does"""
+    descriptions = {
+        ('GET', '/products'): 'Fetching product catalog',
+        ('GET', '/categories'): 'Loading product categories',
+        ('GET', '/api/cart'): 'Viewing shopping cart',
+        ('POST', '/api/cart/add'): 'Adding item to cart',
+        ('POST', '/api/cart/remove'): 'Removing item from cart',
+        ('POST', '/api/cart/clear'): 'Clearing cart',
+        ('GET', '/api/cart/count'): 'Checking cart item count',
+        ('POST', '/api/login'): 'User logging in',
+        ('POST', '/api/register'): 'New user registering',
+        ('POST', '/api/logout'): 'User logging out',
+        ('GET', '/api/me'): 'Checking user session',
+        ('PUT', '/api/profile'): 'Updating user profile',
+        ('GET', '/api/orders'): 'Fetching order history',
+        ('POST', '/api/orders'): 'Placing new order',
+        ('GET', '/health'): 'Health check',
+    }
+
+    # Check for exact match first
+    key = (method, path)
+    if key in descriptions:
+        return descriptions[key]
+
+    # Check for pattern matches (with IDs)
+    if path.startswith('/products/') and method == 'GET':
+        return 'Fetching single product details'
+    if path.startswith('/api/cart/add/') and method == 'POST':
+        return 'Adding item to cart'
+    if path.startswith('/api/cart/remove/') and method == 'POST':
+        return 'Removing item from cart'
+    if path.startswith('/api/orders/') and method == 'GET':
+        return 'Fetching order details'
+    if path.startswith('/api/monitor/'):
+        return None  # Filter out monitoring requests
+
+    return f'{method} {path}'
+
+@app.after_request
+def after_request(response):
+    """Record request details after processing"""
+    duration = (time.time() - g.request_start_time) * 1000  # Convert to ms
+
+    # Get description and skip monitoring requests
+    description = get_request_description(request.method, request.path)
+    if description is None:
+        # Skip monitoring requests from history
+        return response
+
+    request_info = {
+        'id': g.request_id,
+        'path': request.path,
+        'method': request.method,
+        'status': response.status_code,
+        'duration_ms': round(duration, 2),
+        'timestamp': datetime.now().isoformat(),
+        'ip': request.remote_addr,
+        'description': description
+    }
+
+    with request_history_lock:
+        request_history.append(request_info)
+        stats['total_requests'] += 1
+        if response.status_code >= 400:
+            stats['total_errors'] += 1
+
+    # Add request ID header for tracing
+    response.headers['X-Request-ID'] = g.request_id
+    response.headers['X-Response-Time'] = f'{duration:.2f}ms'
+    return response
+
+# Health check for services
+def get_db_status():
+    """Check database connection status"""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('SELECT 1')
+        cur.close()
+        conn.close()
+        return {'status': 'healthy', 'latency_ms': 0}
+    except Exception as e:
+        return {'status': 'unhealthy', 'error': str(e)}
 
 @app.route('/products')
 def get_products():
@@ -127,25 +240,23 @@ def login():
     if not data or 'email' not in data or 'password' not in data:
         return jsonify({'success': False, 'error': 'Email and password required'}), 400
 
-    hashed_pw = hash_password(data['password'])
-
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     cur.execute('''
-        SELECT id, name, email FROM users
-        WHERE email = %s AND password = %s
-    ''', (data['email'], hashed_pw))
+        SELECT id, name, email, password FROM users
+        WHERE email = %s
+    ''', (data['email'],))
 
     user = cur.fetchone()
     cur.close()
     conn.close()
 
-    if user:
+    if user and verify_password(data['password'], user['password']):
         session['user_id'] = user['id']
         session['user_name'] = user['name']
         session['user_email'] = user['email']
-        return jsonify({'success': True, 'user': user})
+        return jsonify({'success': True, 'user': {'id': user['id'], 'name': user['name'], 'email': user['email']}})
 
     return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
 
@@ -401,6 +512,167 @@ def get_order(order_id):
 def health():
     """Health check endpoint"""
     return jsonify({'status': 'healthy'})
+
+# Monitoring API Endpoints
+@app.route('/api/monitor/requests')
+def get_monitor_requests():
+    """Get recent request history"""
+    with request_history_lock:
+        requests = list(request_history)
+    return jsonify({
+        'requests': requests,
+        'total': len(requests)
+    })
+
+@app.route('/api/monitor/services')
+def get_monitor_services():
+    """Get service status with container/pod information"""
+    # Get container/pod info
+    hostname = socket.gethostname()
+    service_name = os.environ.get('SERVICE_NAME', 'unknown')
+    service_tier = os.environ.get('SERVICE_TIER', 'unknown')
+    replicas = os.environ.get('REPLICAS', '1')
+
+    # Check database
+    db_start = time.time()
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('SELECT 1')
+        cur.close()
+        conn.close()
+        db_latency = round((time.time() - db_start) * 1000, 2)
+        db_status = 'healthy'
+    except Exception as e:
+        db_latency = 0
+        db_status = 'unhealthy'
+
+    # Container/Pod info for each service
+    services = [
+        {
+            'name': 'Nginx',
+            'type': 'frontend',
+            'status': 'healthy',
+            'latency_ms': 0,
+            'port': 80,
+            'description': 'Static file server & reverse proxy',
+            'container': {
+                'name': 'demo-presentation-1',
+                'image': 'demo-presentation:latest',
+                'tier': 'presentation',
+                'replicas': 1
+            }
+        },
+        {
+            'name': 'Flask',
+            'type': 'backend',
+            'status': 'healthy',
+            'latency_ms': 0,
+            'port': 5000,
+            'description': 'Python API server',
+            'container': {
+                'name': hostname,
+                'image': 'demo-application:latest',
+                'tier': 'application',
+                'service_name': service_name,
+                'replicas': int(replicas)
+            }
+        },
+        {
+            'name': 'PostgreSQL',
+            'type': 'database',
+            'status': db_status,
+            'latency_ms': db_latency,
+            'port': 5432,
+            'description': 'Primary data store',
+            'container': {
+                'name': 'demo-database-1',
+                'image': 'postgres:15-alpine',
+                'tier': 'data',
+                'replicas': 1
+            }
+        }
+    ]
+
+    return jsonify({
+        'services': services,
+        'container_info': {
+            'hostname': hostname,
+            'platform': platform.system(),
+            'python_version': platform.python_version(),
+            'service_name': service_name,
+            'service_tier': service_tier
+        },
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/api/monitor/stats')
+def get_monitor_stats():
+    """Get aggregate statistics"""
+    with request_history_lock:
+        total = stats['total_requests']
+        errors = stats['total_errors']
+        uptime = (datetime.now() - stats['start_time']).total_seconds()
+
+        # Calculate averages from recent history
+        recent = list(request_history)
+        avg_latency = sum(r['duration_ms'] for r in recent) / len(recent) if recent else 0
+
+        # Endpoint breakdown
+        endpoints = {}
+        for r in recent:
+            path = r['path']
+            if path not in endpoints:
+                endpoints[path] = {'count': 0, 'total_latency': 0, 'errors': 0}
+            endpoints[path]['count'] += 1
+            endpoints[path]['total_latency'] += r['duration_ms']
+            if r['status'] >= 400:
+                endpoints[path]['errors'] += 1
+
+        # Calculate averages for each endpoint
+        for path in endpoints:
+            count = endpoints[path]['count']
+            endpoints[path]['avg_latency'] = round(endpoints[path]['total_latency'] / count, 2)
+
+    return jsonify({
+        'total_requests': total,
+        'total_errors': errors,
+        'error_rate': round((errors / total * 100) if total > 0 else 0, 2),
+        'avg_latency_ms': round(avg_latency, 2),
+        'uptime_seconds': round(uptime, 0),
+        'requests_per_minute': round(total / (uptime / 60) if uptime > 0 else 0, 2),
+        'endpoints': endpoints,
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/api/monitor/system')
+def get_monitor_system():
+    """Get system metrics"""
+    try:
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+
+        return jsonify({
+            'cpu_percent': cpu_percent,
+            'memory': {
+                'total_gb': round(memory.total / (1024**3), 2),
+                'used_gb': round(memory.used / (1024**3), 2),
+                'percent': memory.percent
+            },
+            'disk': {
+                'total_gb': round(disk.total / (1024**3), 2),
+                'used_gb': round(disk.used / (1024**3), 2),
+                'percent': disk.percent
+            }
+        })
+    except Exception:
+        # Fallback if psutil not available
+        return jsonify({
+            'cpu_percent': 0,
+            'memory': {'total_gb': 0, 'used_gb': 0, 'percent': 0},
+            'disk': {'total_gb': 0, 'used_gb': 0, 'percent': 0}
+        })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
