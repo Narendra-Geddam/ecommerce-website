@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Presentation Tier - Nginx Frontend
+  presentation:
+    build:
+      context: ./presentation
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - application
+    networks:
+      - ecommerce-network
+
+  # Application Tier - Flask Backend API
+  application:
+    build:
+      context: ./application
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://ecommerce:password@database:5432/ecommerce
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-your_production_secret_key_here}
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  # Data Tier - PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=ecommerce
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=ecommerce
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./data/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecommerce -d ecommerce"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+
+networks:
+  ecommerce-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

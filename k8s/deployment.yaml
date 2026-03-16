@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecommerce-app
+  labels:
+    app: ecommerce-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ecommerce-app
+  template:
+    metadata:
+      labels:
+        app: ecommerce-app
+    spec:
+      containers:
+      - name: ecommerce-app
+        image: ecommerce-app:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: FLASK_APP
+          value: application/app.py
+        - name: FLASK_RUN_HOST
+          value: "0.0.0.0"
+        volumeMounts:
+        - name: presentation-volume
+          mountPath: /app/presentation
+        - name: data-volume
+          mountPath: /app/data
+      volumes:
+      - name: presentation-volume
+        configMap:
+          name: ecommerce-presentation
+      - name: data-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecommerce-app-service
+spec:
+  selector:
+    app: ecommerce-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-presentation
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>E-Commerce Store</title>
+    </head>
+    <body>
+        <h1>Product Listings</h1>
+        <div>
+            {% for product in products %}
+            <div style="border: 1px solid #ccc; padding: 10px; margin: 10px; display: inline-block; width: 200px;">
+                <h3>{{ product.name }}</h3>
+                <p>{{ product.description }}</p>
+                <p>Price: ${{ product.price }}</p>
+                <img src="{{ product.image_url }}" alt="{{ product.name }}" width="100">
+                <br>
+                <a href="{{ url_for('add_to_cart', product_id=product.id) }}">Add to Cart</a>
+            </div>
+            {% endfor %}
+        </div>
+        <br>
+        <a href="{{ url_for('cart') }}">View Cart</a>
+    </body>
+    </html>
+  cart.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Shopping Cart</title>
+    </head>
+    <body>
+        <h1>Your Shopping Cart</h1>
+        {% if products %}
+        <ul>
+            {% for product in products %}
+            <li>
+                {{ product.name }} - ${{ product.price }}
+            </li>
+            {% endfor %}
+        </ul>
+        <p>Total: ${{ total }}</p>
+        {% else %}
+        <p>Your cart is empty.</p>
+        {% endif %}
+        <br>
+        <a href="{{ url_for('index') }}">Continue Shopping</a>
+        <a href="{{ url_for('checkout') }}">Proceed to Checkout</a>
+    </body>
+    </html>
+  checkout.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Checkout</title>
+    </head>
+    <body>
+        <h1>Checkout</h1>
+        <p>Thank you for your purchase!</p>
+        <p>Your order has been processed.</p>
+        <a href="{{ url_for('index') }}">Continue Shopping</a>
+    </body>
+    </html>
