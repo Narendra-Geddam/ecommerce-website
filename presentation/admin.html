@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopEasy Admin Portal</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; background: #eef3f8; color: #1f2937; }
+        header { background: linear-gradient(135deg, #0f2742, #1d4f91); color: #fff; padding: 18px 24px; }
+        .topbar, .layout { max-width: 1480px; margin: 0 auto; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .brand { color: #fff; text-decoration: none; font-size: 1.45rem; font-weight: 800; letter-spacing: 0.02em; }
+        .top-links { display: flex; gap: 10px; flex-wrap: wrap; }
+        .top-links a { color: #fff; text-decoration: none; padding: 10px 14px; border-radius: 999px; background: rgba(255,255,255,0.14); }
+        .layout { display: grid; grid-template-columns: 260px 1fr; gap: 22px; padding: 24px; }
+        .sidebar, .panel, .stat { background: #fff; border-radius: 24px; box-shadow: 0 12px 28px rgba(15, 39, 66, 0.08); }
+        .sidebar { padding: 18px; height: fit-content; position: sticky; top: 18px; }
+        .sidebar h3 { margin: 0 0 12px; font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; }
+        .menu { display: grid; gap: 10px; }
+        .menu button { border: none; border-radius: 16px; padding: 13px 15px; text-align: left; background: #edf4ff; color: #123c70; font-weight: 800; cursor: pointer; }
+        .menu button.active { background: #123c70; color: #fff; }
+        .content { display: grid; gap: 18px; }
+        .hero { display: grid; grid-template-columns: 1.45fr 1fr; gap: 18px; }
+        .panel { padding: 20px; }
+        .hero-title { font-size: 2rem; margin: 0 0 8px; }
+        .muted { color: #66768d; line-height: 1.55; }
+        .hero-highlight { background: linear-gradient(135deg, #ffe59a, #ff9b7d); }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+        .stat { padding: 18px; }
+        .stat h3 { margin: 0; font-size: 2rem; color: #123c70; }
+        .stat p { margin: 8px 0 0; color: #66768d; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .notice { background: #ecf4ff; color: #154270; padding: 12px 14px; border-radius: 16px; margin-bottom: 14px; }
+        .grid2, .grid3 { display: grid; gap: 18px; }
+        .grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .cards { display: grid; gap: 12px; }
+        .card { border: 1px solid #e2e8f0; border-radius: 18px; padding: 14px; background: #fbfdff; }
+        .card h4 { margin: 0 0 8px; }
+        .actions, .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        input, textarea, select, button { font: inherit; }
+        input, textarea, select { width: 100%; padding: 11px 12px; border: 1px solid #d3dce8; border-radius: 12px; background: #fbfdff; }
+        textarea { min-height: 110px; resize: vertical; }
+        input[type="checkbox"] { width: auto; }
+        .btn { border: none; border-radius: 12px; padding: 11px 14px; font-weight: 800; cursor: pointer; }
+        .primary { background: #123c70; color: #fff; }
+        .secondary { background: #e8f0fd; color: #123c70; }
+        .danger { background: #ffe8ec; color: #b42318; }
+        .tiny { padding: 8px 12px; font-size: 0.9rem; }
+        .message { display: none; padding: 12px 14px; border-radius: 16px; font-weight: 800; }
+        .message.show { display: block; }
+        .message.success { background: #e7f8ee; color: #156f3c; }
+        .message.error { background: #ffe8ec; color: #b42318; }
+        .pill { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 6px 10px; font-size: 0.82rem; font-weight: 800; }
+        .pill.ok { background: #e6f8ed; color: #17663a; }
+        .pill.warn { background: #fff2d7; color: #9d6800; }
+        .pill.bad { background: #ffe8ec; color: #b42318; }
+        .preview { min-height: 260px; border-radius: 24px; padding: 24px; display: grid; grid-template-columns: 1.3fr 240px; gap: 18px; align-items: center; }
+        .preview img { width: 100%; height: 190px; object-fit: cover; border-radius: 18px; background: rgba(255,255,255,0.18); }
+        .badge { display: inline-flex; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,0.18); font-weight: 800; margin-bottom: 10px; }
+        .subhead { margin: 0 0 10px; }
+        .table { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid #edf2f8; text-align: left; vertical-align: top; }
+        th { color: #64748b; font-size: 0.83rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stack { display: grid; gap: 8px; }
+        .form-card { border: 1px solid #e2e8f0; border-radius: 18px; padding: 16px; background: #fbfdff; }
+        .form-card h3 { margin-top: 0; }
+        .inline-field { min-width: 92px; width: 92px; }
+        .upload-box { border: 1px dashed #90a8cc; border-radius: 16px; padding: 14px; background: #f6faff; }
+        @media (max-width: 1160px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { position: static; }
+            .hero, .grid2, .grid3, .preview { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="topbar">
+            <a href="/" class="brand">ShopEasy Admin Portal</a>
+            <div class="top-links">
+                <a href="/">Storefront</a>
+                <a href="/product.html?id=1">Product Detail</a>
+                <a href="/orders.html">My Orders</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <h3>Shop Management</h3>
+            <div class="menu">
+                <button class="nav active" data-target="overview">Overview</button>
+                <button class="nav" data-target="banners">Homepage Banner Studio</button>
+                <button class="nav" data-target="catalog">Product Catalog</button>
+                <button class="nav" data-target="promotions">Offers and Coupons</button>
+                <button class="nav" data-target="orders">Orders Control</button>
+                <button class="nav" data-target="inventory">Inventory Desk</button>
+                <button class="nav" data-target="users">Users and Access</button>
+            </div>
+        </aside>
+
+        <main class="content" id="main-content">
+            <div class="panel">Loading admin portal...</div>
+        </main>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        const FALLBACK_IMAGE = '/static/products/desk.jpg';
+        const state = { me: null, products: [], users: [], banners: [], offers: [], coupons: [], orders: [], inventory: [], lowStock: [] };
+        const selected = { bannerId: null, productId: null, offerId: null, couponId: null };
+
+        function authHeaders() {
+            const token = localStorage.getItem('access_token');
+            return token ? { Authorization: `Bearer ${token}` } : {};
+        }
+
+        function mergeObjects(base, extra) {
+            const result = {};
+            let key;
+            base = base || {};
+            extra = extra || {};
+            for (key in base) {
+                if (Object.prototype.hasOwnProperty.call(base, key)) {
+                    result[key] = base[key];
+                }
+            }
+            for (key in extra) {
+                if (Object.prototype.hasOwnProperty.call(extra, key)) {
+                    result[key] = extra[key];
+                }
+            }
+            return result;
+        }
+
+        async function getCsrfToken(force = false) {
+            if (force) {
+                sessionStorage.removeItem('csrf_token');
+            }
+            const cached = sessionStorage.getItem('csrf_token');
+            if (cached) {
+                return cached;
+            }
+            const response = await fetch(`${API_URL}/csrf-token`, { credentials: 'include' });
+            const data = await response.json();
+            sessionStorage.setItem('csrf_token', data.csrf_token);
+            return data.csrf_token;
+        }
+
+        async function readJsonResponse(response, fallback) {
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`${fallback}. Received ${contentType || 'unknown'}: ${text.slice(0, 120)}`);
+            }
+            return response.json();
+        }
+
+        async function fetchJson(url, options = {}, fallback = 'Request failed') {
+            const firstOptions = mergeObjects(options, {
+                credentials: 'include',
+                headers: mergeObjects(authHeaders(), options.headers || {})
+            });
+            let response = await fetch(url, {
+                credentials: firstOptions.credentials,
+                method: firstOptions.method,
+                headers: firstOptions.headers,
+                body: firstOptions.body
+            });
+            let data = await readJsonResponse(response, fallback);
+
+            if (response.status === 403 && ['POST', 'PUT', 'DELETE'].includes((options.method || 'GET').toUpperCase())) {
+                const csrfToken = await getCsrfToken(true);
+                const retryOptions = mergeObjects(options, {
+                    credentials: 'include',
+                    headers: mergeObjects(mergeObjects(authHeaders(), options.headers || {}), { 'X-CSRF-Token': csrfToken })
+                });
+                response = await fetch(url, {
+                    credentials: retryOptions.credentials,
+                    method: retryOptions.method,
+                    headers: retryOptions.headers,
+                    body: retryOptions.body
+                });
+                data = await readJsonResponse(response, fallback);
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error || fallback);
+            }
+            return data;
+        }
+
+        async function sendJson(url, method, body, fallback) {
+            return fetchJson(url, {
+                method,
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': await getCsrfToken() },
+                body: JSON.stringify(body)
+            }, fallback);
+        }
+
+        async function uploadBannerImage() {
+            const input = document.getElementById('banner-image-file');
+            if (!input || !input.files || !input.files.length) {
+                flash('Choose an image file first', 'error');
+                return;
+            }
+
+            const send = async (csrfToken) => fetch(`${API_URL}/admin/homepage/banners/upload`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: mergeObjects(authHeaders(), { 'X-CSRF-Token': csrfToken }),
+                body: (() => {
+                    const form = new FormData();
+                    form.append('image', input.files[0]);
+                    return form;
+                })()
+            });
+
+            let response = await send(await getCsrfToken());
+            let data = await readJsonResponse(response, 'Failed to upload banner image');
+            if (response.status === 403) {
+                response = await send(await getCsrfToken(true));
+                data = await readJsonResponse(response, 'Failed to upload banner image');
+            }
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to upload banner image');
+            }
+
+            document.getElementById('banner-image_url').value = data.image_url;
+            renderBannerPreview();
+            flash('Banner image uploaded');
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        }
+
+        function escapeAttr(value) {
+            return escapeHtml(value);
+        }
+
+        function statCard(value, label) {
+            return `<div class="stat"><h3>${value}</h3><p>${label}</p></div>`;
+        }
+
+        function flash(message, type = 'success') {
+            const el = document.getElementById('portal-message');
+            if (!el) {
+                return;
+            }
+            el.className = `message show ${type}`;
+            el.textContent = message;
+            setTimeout(() => {
+                el.className = 'message';
+                el.textContent = '';
+            }, 3200);
+        }
+
+        function bindNav() {
+            document.querySelectorAll('.nav').forEach((button) => {
+                button.onclick = () => {
+                    document.querySelectorAll('.nav').forEach((node) => node.classList.remove('active'));
+                    document.querySelectorAll('.section').forEach((node) => node.classList.remove('active'));
+                    button.classList.add('active');
+                    document.getElementById(`section-${button.dataset.target}`).classList.add('active');
+                };
+            });
+        }
+
+        function bannerFormData() {
+            return {
+                title: document.getElementById('banner-title').value.trim(),
+                subtitle: document.getElementById('banner-subtitle').value.trim(),
+                badge: document.getElementById('banner-badge').value.trim(),
+                image_url: document.getElementById('banner-image_url').value.trim(),
+                link_url: document.getElementById('banner-link_url').value.trim() || '/',
+                background_color: document.getElementById('banner-background_color').value.trim() || '#1f3c88',
+                text_color: document.getElementById('banner-text_color').value.trim() || '#ffffff',
+                sort_order: Number(document.getElementById('banner-sort_order').value || 0),
+                active: document.getElementById('banner-active').checked
+            };
+        }
+
+        function productFormData() {
+            return {
+                name: document.getElementById('product-name').value.trim(),
+                description: document.getElementById('product-description').value.trim(),
+                category: document.getElementById('product-category').value.trim(),
+                image_url: document.getElementById('product-image_url').value.trim(),
+                price: Number(document.getElementById('product-price').value || 0),
+                stock: Number(document.getElementById('product-stock').value || 0),
+                is_active: document.getElementById('product-active').checked
+            };
+        }
+
+        function offerFormData() {
+            return {
+                title: document.getElementById('offer-title').value.trim(),
+                description: document.getElementById('offer-description').value.trim(),
+                coupon_code: document.getElementById('offer-coupon_code').value.trim(),
+                cta_label: document.getElementById('offer-cta_label').value.trim() || 'Shop Now',
+                cta_link: document.getElementById('offer-cta_link').value.trim() || '/',
+                highlight_text: document.getElementById('offer-highlight_text').value.trim(),
+                sort_order: Number(document.getElementById('offer-sort_order').value || 0),
+                active: document.getElementById('offer-active').checked
+            };
+        }
+
+        function couponFormData() {
+            return {
+                code: document.getElementById('coupon-code').value.trim().toUpperCase(),
+                description: document.getElementById('coupon-description').value.trim(),
+                discount_type: document.getElementById('coupon-discount_type').value,
+                discount_value: Number(document.getElementById('coupon-discount_value').value || 0),
+                min_order_amount: Number(document.getElementById('coupon-min_order_amount').value || 0),
+                usage_limit: document.getElementById('coupon-usage_limit').value.trim(),
+                expires_at: document.getElementById('coupon-expires_at').value.trim(),
+                active: document.getElementById('coupon-active').checked
+            };
+        }
+
+        function renderBannerPreview() {
+            const data = bannerFormData();
+            const preview = document.getElementById('banner-preview');
+            if (!preview) {
+                return;
+            }
+            preview.innerHTML = `
+                <div class="preview" style="background:${escapeAttr(data.background_color)};color:${escapeAttr(data.text_color)}">
+                    <div>
+                        <span class="badge">${escapeHtml(data.badge || 'Festival Special')}</span>
+                        <h2 style="margin:0 0 10px;">${escapeHtml(data.title || 'Big Celebration Sale')}</h2>
+                        <p class="muted" style="color:inherit;opacity:0.92">${escapeHtml(data.subtitle || 'Upload your artwork, write the announcement, and publish it for every shopper on the homepage slideshow.')}</p>
+                        <span class="pill warn">${escapeHtml(data.link_url)}</span>
+                    </div>
+                    <img src="${escapeAttr(data.image_url || FALLBACK_IMAGE)}" alt="Banner preview" onerror="this.src='${FALLBACK_IMAGE}'">
+                </div>
+            `;
+        }
+
+        function clearBannerForm() {
+            selected.bannerId = null;
+            document.getElementById('banner-title').value = '';
+            document.getElementById('banner-subtitle').value = '';
+            document.getElementById('banner-badge').value = '';
+            document.getElementById('banner-image_url').value = '';
+            document.getElementById('banner-link_url').value = '/';
+            document.getElementById('banner-background_color').value = '#1f3c88';
+            document.getElementById('banner-text_color').value = '#ffffff';
+            document.getElementById('banner-sort_order').value = String(state.banners.length + 1);
+            document.getElementById('banner-active').checked = true;
+            document.getElementById('banner-image-file').value = '';
+            document.getElementById('banner-heading').textContent = 'Create Homepage Banner';
+            document.getElementById('banner-save').textContent = 'Create Banner';
+            renderBannerPreview();
+        }
+
+        function editBanner(id) {
+            const banner = state.banners.find((item) => item.id === id);
+            if (!banner) {
+                return;
+            }
+            selected.bannerId = id;
+            document.getElementById('banner-title').value = banner.title || '';
+            document.getElementById('banner-subtitle').value = banner.subtitle || '';
+            document.getElementById('banner-badge').value = banner.badge || '';
+            document.getElementById('banner-image_url').value = banner.image_url || '';
+            document.getElementById('banner-link_url').value = banner.link_url || '/';
+            document.getElementById('banner-background_color').value = banner.background_color || '#1f3c88';
+            document.getElementById('banner-text_color').value = banner.text_color || '#ffffff';
+            document.getElementById('banner-sort_order').value = String(banner.sort_order || 0);
+            document.getElementById('banner-active').checked = !!banner.active;
+            document.getElementById('banner-heading').textContent = `Edit Banner #${id}`;
+            document.getElementById('banner-save').textContent = 'Update Banner';
+            renderBannerPreview();
+        }
+
+        async function saveBanner() {
+            const payload = bannerFormData();
+            if (!payload.title) {
+                flash('Banner title is required', 'error');
+                return;
+            }
+            if (selected.bannerId) {
+                await sendJson(`${API_URL}/admin/homepage/banners/${selected.bannerId}`, 'PUT', payload, 'Failed to update banner');
+                flash('Banner updated');
+            } else {
+                await sendJson(`${API_URL}/admin/homepage/banners`, 'POST', payload, 'Failed to create banner');
+                flash('Banner created');
+            }
+            await loadPortal();
+            clearBannerForm();
+        }
+
+        async function deleteBanner(id) {
+            await fetchJson(`${API_URL}/admin/homepage/banners/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': await getCsrfToken() } }, 'Failed to delete banner');
+            flash('Banner deleted');
+            await loadPortal();
+            clearBannerForm();
+        }
+
+        function clearProductForm() {
+            selected.productId = null;
+            document.getElementById('product-name').value = '';
+            document.getElementById('product-description').value = '';
+            document.getElementById('product-category').value = '';
+            document.getElementById('product-image_url').value = '';
+            document.getElementById('product-price').value = '';
+            document.getElementById('product-stock').value = '';
+            document.getElementById('product-active').checked = true;
+            document.getElementById('product-heading').textContent = 'Create New Product';
+            document.getElementById('product-save').textContent = 'Create Product';
+        }
+
+        function editProduct(id) {
+            const product = state.products.find((item) => item.id === id);
+            if (!product) {
+                return;
+            }
+            selected.productId = id;
+            document.getElementById('product-name').value = product.name || '';
+            document.getElementById('product-description').value = product.description || '';
+            document.getElementById('product-category').value = product.category || '';
+            document.getElementById('product-image_url').value = product.image_url || '';
+            document.getElementById('product-price').value = String(product.price || '');
+            document.getElementById('product-stock').value = String(product.stock || 0);
+            document.getElementById('product-active').checked = product.is_active !== false;
+            document.getElementById('product-heading').textContent = `Edit Product #${id}`;
+            document.getElementById('product-save').textContent = 'Update Product';
+        }
+
+        async function saveProduct() {
+            const payload = productFormData();
+            if (!payload.name || !payload.category || payload.price <= 0) {
+                flash('Product name, category, and positive price are required', 'error');
+                return;
+            }
+            if (selected.productId) {
+                await sendJson(`${API_URL}/admin/products/${selected.productId}`, 'PUT', payload, 'Failed to update product');
+                flash('Product updated');
+            } else {
+                await sendJson(`${API_URL}/admin/products`, 'POST', payload, 'Failed to create product');
+                flash('Product created');
+            }
+            await loadPortal();
+            clearProductForm();
+        }
+
+        async function archiveProduct(id) {
+            await fetchJson(`${API_URL}/admin/products/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': await getCsrfToken() } }, 'Failed to archive product');
+            flash('Product archived');
+            await loadPortal();
+        }
+
+        function clearOfferForm() {
+            selected.offerId = null;
+            document.getElementById('offer-title').value = '';
+            document.getElementById('offer-description').value = '';
+            document.getElementById('offer-coupon_code').value = '';
+            document.getElementById('offer-cta_label').value = 'Shop Now';
+            document.getElementById('offer-cta_link').value = '/';
+            document.getElementById('offer-highlight_text').value = '';
+            document.getElementById('offer-sort_order').value = String(state.offers.length + 1);
+            document.getElementById('offer-active').checked = true;
+            document.getElementById('offer-heading').textContent = 'Create Homepage Offer Card';
+            document.getElementById('offer-save').textContent = 'Create Offer';
+        }
+
+        function editOffer(id) {
+            const offer = state.offers.find((item) => item.id === id);
+            if (!offer) {
+                return;
+            }
+            selected.offerId = id;
+            document.getElementById('offer-title').value = offer.title || '';
+            document.getElementById('offer-description').value = offer.description || '';
+            document.getElementById('offer-coupon_code').value = offer.coupon_code || '';
+            document.getElementById('offer-cta_label').value = offer.cta_label || 'Shop Now';
+            document.getElementById('offer-cta_link').value = offer.cta_link || '/';
+            document.getElementById('offer-highlight_text').value = offer.highlight_text || '';
+            document.getElementById('offer-sort_order').value = String(offer.sort_order || 0);
+            document.getElementById('offer-active').checked = !!offer.active;
+            document.getElementById('offer-heading').textContent = `Edit Offer #${id}`;
+            document.getElementById('offer-save').textContent = 'Update Offer';
+        }
+
+        async function saveOffer() {
+            const payload = offerFormData();
+            if (!payload.title) {
+                flash('Offer title is required', 'error');
+                return;
+            }
+            if (selected.offerId) {
+                await sendJson(`${API_URL}/admin/homepage/offers/${selected.offerId}`, 'PUT', payload, 'Failed to update offer');
+                flash('Offer updated');
+            } else {
+                await sendJson(`${API_URL}/admin/homepage/offers`, 'POST', payload, 'Failed to create offer');
+                flash('Offer created');
+            }
+            await loadPortal();
+            clearOfferForm();
+        }
+
+        async function deleteOffer(id) {
+            await fetchJson(`${API_URL}/admin/homepage/offers/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': await getCsrfToken() } }, 'Failed to delete offer');
+            flash('Offer deleted');
+            await loadPortal();
+            clearOfferForm();
+        }
+
+        function clearCouponForm() {
+            selected.couponId = null;
+            document.getElementById('coupon-code').value = '';
+            document.getElementById('coupon-description').value = '';
+            document.getElementById('coupon-discount_type').value = 'PERCENT';
+            document.getElementById('coupon-discount_value').value = '';
+            document.getElementById('coupon-min_order_amount').value = '';
+            document.getElementById('coupon-usage_limit').value = '';
+            document.getElementById('coupon-expires_at').value = '';
+            document.getElementById('coupon-active').checked = true;
+            document.getElementById('coupon-heading').textContent = 'Create Coupon';
+            document.getElementById('coupon-save').textContent = 'Create Coupon';
+        }
+
+        function editCoupon(id) {
+            const coupon = state.coupons.find((item) => item.id === id);
+            if (!coupon) {
+                return;
+            }
+            selected.couponId = id;
+            document.getElementById('coupon-code').value = coupon.code || '';
+            document.getElementById('coupon-description').value = coupon.description || '';
+            document.getElementById('coupon-discount_type').value = coupon.discount_type || 'PERCENT';
+            document.getElementById('coupon-discount_value').value = String(coupon.discount_value || '');
+            document.getElementById('coupon-min_order_amount').value = String(coupon.min_order_amount || '');
+            document.getElementById('coupon-usage_limit').value = coupon.usage_limit == null ? '' : String(coupon.usage_limit);
+            document.getElementById('coupon-expires_at').value = coupon.expires_at ? String(coupon.expires_at).slice(0, 16) : '';
+            document.getElementById('coupon-active').checked = !!coupon.active;
+            document.getElementById('coupon-heading').textContent = `Edit Coupon #${id}`;
+            document.getElementById('coupon-save').textContent = 'Update Coupon';
+        }
+
+        async function saveCoupon() {
+            const payload = couponFormData();
+            if (!payload.code || payload.discount_value <= 0) {
+                flash('Coupon code and positive discount value are required', 'error');
+                return;
+            }
+            if (payload.usage_limit === '') {
+                payload.usage_limit = null;
+            }
+            if (selected.couponId) {
+                await sendJson(`${API_URL}/admin/coupons/${selected.couponId}`, 'PUT', payload, 'Failed to update coupon');
+                flash('Coupon updated');
+            } else {
+                await sendJson(`${API_URL}/admin/coupons`, 'POST', payload, 'Failed to create coupon');
+                flash('Coupon created');
+            }
+            await loadPortal();
+            clearCouponForm();
+        }
+
+        async function deleteCoupon(id) {
+            await fetchJson(`${API_URL}/admin/coupons/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': await getCsrfToken() } }, 'Failed to delete coupon');
+            flash('Coupon deleted');
+            await loadPortal();
+            clearCouponForm();
+        }
+
+        async function changeOrderStatus(id) {
+            const select = document.getElementById(`order-status-${id}`);
+            if (!select) {
+                return;
+            }
+            await sendJson(`${API_URL}/admin/orders/${id}/status`, 'PUT', { status: select.value }, 'Failed to update order status');
+            flash('Order status updated');
+            await loadPortal();
+        }
+
+        async function cancelOrder(id) {
+            await fetchJson(`${API_URL}/orders/${id}/cancel`, { method: 'POST', headers: { 'X-CSRF-Token': await getCsrfToken() } }, 'Failed to cancel order');
+            flash('Order cancelled');
+            await loadPortal();
+        }
+
+        async function syncInventory() {
+            await fetchJson(`${API_URL}/admin/inventory/sync`, { method: 'POST', headers: { 'X-CSRF-Token': await getCsrfToken() } }, 'Failed to sync inventory');
+            flash('Inventory sync complete');
+            await loadPortal();
+        }
+
+        async function restockProduct(productId) {
+            const qtyField = document.getElementById(`restock-qty-${productId}`);
+            const notesField = document.getElementById(`restock-notes-${productId}`);
+            if (!qtyField || Number(qtyField.value || 0) <= 0) {
+                flash('Enter a restock quantity greater than zero', 'error');
+                return;
+            }
+            await sendJson(`${API_URL}/admin/inventory/restock`, 'POST', {
+                product_id: productId,
+                quantity: Number(qtyField.value),
+                notes: notesField ? notesField.value.trim() : ''
+            }, 'Failed to restock product');
+            flash('Inventory updated');
+            await loadPortal();
+        }
+
+        async function updateUserStatus(id, changes) {
+            const user = state.users.find((item) => item.id === id);
+            if (!user) {
+                return;
+            }
+            await sendJson(`${API_URL}/admin/users/${id}/status`, 'PUT', {
+                is_banned: changes.is_banned != null ? changes.is_banned : user.is_banned,
+                is_active: changes.is_active != null ? changes.is_active : user.is_active
+            }, 'Failed to update user status');
+            flash('User status updated');
+            await loadPortal();
+        }
+
+        function renderOverviewSection() {
+            return `
+                <section id="section-overview" class="section active">
+                    <div class="grid3">
+                        <div class="panel">
+                            <div class="notice">Run your homepage like a real storefront. Upload the artwork, write the campaign message, publish the slide, and every visitor sees it on the public homepage.</div>
+                            <div class="cards">
+                                <div class="card"><h4>Banner Campaigns</h4><p class="muted">Festival greetings, welcome gifts, flash-sale alerts, seasonal launches, brand campaigns, and offer slides.</p></div>
+                                <div class="card"><h4>Catalog Control</h4><p class="muted">Create, edit, price, stock, archive, and relaunch products from one place.</p></div>
+                                <div class="card"><h4>Operations Desk</h4><p class="muted">Handle orders, restock products, sync inventory, activate coupons, and manage shopper access.</p></div>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h2 class="subhead">Homepage Now</h2>
+                            <div class="cards">
+                                ${state.banners.slice(0, 4).map((banner) => `
+                                    <div class="card">
+                                        <h4>${escapeHtml(banner.title)}</h4>
+                                        <p class="muted">Slide #${banner.sort_order} • ${banner.active ? 'Visible to all users' : 'Hidden from homepage'}</p>
+                                    </div>
+                                `).join('') || '<div class="card">No homepage banners yet.</div>'}
+                            </div>
+                        </div>
+                        <div class="panel hero-highlight">
+                            <h2 class="subhead">${escapeHtml(state.me.name || 'Admin')}</h2>
+                            <p class="muted">${escapeHtml(state.me.email || '')}</p>
+                            <p class="muted">Active banners: ${state.banners.filter((item) => item.active).length}</p>
+                            <p class="muted">Low stock alerts: ${state.lowStock.length}</p>
+                            <p class="muted">Live offers: ${state.offers.filter((item) => item.active).length}</p>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderBannersSection() {
+            return `
+                <section id="section-banners" class="section">
+                    <div class="grid2">
+                        <div class="panel">
+                            <div class="notice">This page manages the public homepage banner slideshow. Upload an image, write the announcement, choose the link target, and save it. Shoppers will see active slides on the store homepage.</div>
+                            <div class="form-card upload-box">
+                                <h3 style="margin-top:0">Upload Banner Artwork</h3>
+                                <div class="actions">
+                                    <input id="banner-image-file" type="file" accept=".png,.jpg,.jpeg,.webp,.gif">
+                                    <button class="btn secondary" type="button" onclick="uploadBannerImage()">Upload Image</button>
+                                </div>
+                            </div>
+                            <div class="form-card" style="margin-top:14px">
+                                <h3 id="banner-heading">Create Homepage Banner</h3>
+                                <div class="grid2">
+                                    <input id="banner-title" placeholder="Banner title">
+                                    <input id="banner-badge" placeholder="Badge text e.g. Holi Sale">
+                                    <input id="banner-image_url" placeholder="Uploaded image path or external URL">
+                                    <input id="banner-link_url" placeholder="Link target e.g. /?category=Mobiles">
+                                    <input id="banner-background_color" placeholder="Background color e.g. #1f3c88">
+                                    <input id="banner-text_color" placeholder="Text color e.g. #ffffff">
+                                    <input id="banner-sort_order" type="number" min="0" placeholder="Slide order">
+                                    <label class="row"><input id="banner-active" type="checkbox" checked> Publish on homepage</label>
+                                </div>
+                                <div class="row" style="margin-top:10px">
+                                    <textarea id="banner-subtitle" placeholder="Festival announcement, welcome gift message, launch teaser, sale copy, or any public campaign text"></textarea>
+                                </div>
+                                <div class="actions" style="margin-top:10px">
+                                    <button id="banner-save" class="btn primary" type="button" onclick="saveBanner()">Create Banner</button>
+                                    <button class="btn secondary" type="button" onclick="clearBannerForm()">Reset</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h2 class="subhead">Homepage Banner Preview</h2>
+                            <div id="banner-preview"></div>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top:18px">
+                        <h2 class="subhead">Live Homepage Slideshow Queue</h2>
+                        <div class="table">
+                            <table>
+                                <thead>
+                                    <tr><th>Slide</th><th>Message</th><th>Target</th><th>Status</th><th>Actions</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${state.banners.map((banner) => `
+                                        <tr>
+                                            <td>#${banner.sort_order}</td>
+                                            <td><strong>${escapeHtml(banner.title)}</strong><br><span class="muted">${escapeHtml(banner.badge || '')}</span></td>
+                                            <td>${escapeHtml(banner.link_url || '/')}</td>
+                                            <td><span class="pill ${banner.active ? 'ok' : 'warn'}">${banner.active ? 'Visible' : 'Hidden'}</span></td>
+                                            <td class="actions">
+                                                <button class="btn secondary tiny" type="button" onclick="editBanner(${banner.id})">Edit</button>
+                                                <button class="btn danger tiny" type="button" onclick="deleteBanner(${banner.id})">Delete</button>
+                                            </td>
+                                        </tr>
+                                    `).join('') || '<tr><td colspan="5">No banners configured yet.</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderCatalogSection() {
+            return `
+                <section id="section-catalog" class="section">
+                    <div class="grid2">
+                        <div class="panel">
+                            <div class="notice">Create and edit products here. This is the catalog control room for price, stock, image, description, and active status.</div>
+                            <div class="form-card">
+                                <h3 id="product-heading">Create New Product</h3>
+                                <div class="grid2">
+                                    <input id="product-name" placeholder="Product name">
+                                    <input id="product-category" placeholder="Category">
+                                    <input id="product-image_url" placeholder="Image URL or /static/... path">
+                                    <input id="product-price" type="number" min="0" step="0.01" placeholder="Price">
+                                    <input id="product-stock" type="number" min="0" step="1" placeholder="Stock">
+                                    <label class="row"><input id="product-active" type="checkbox" checked> Product active</label>
+                                </div>
+                                <div class="row" style="margin-top:10px">
+                                    <textarea id="product-description" placeholder="Full description shown on product page"></textarea>
+                                </div>
+                                <div class="actions" style="margin-top:10px">
+                                    <button id="product-save" class="btn primary" type="button" onclick="saveProduct()">Create Product</button>
+                                    <button class="btn secondary" type="button" onclick="clearProductForm()">Reset</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h2 class="subhead">Catalog Snapshot</h2>
+                            <div class="cards">
+                                ${state.products.slice(0, 6).map((product) => `
+                                    <div class="card">
+                                        <h4>${escapeHtml(product.name)}</h4>
+                                        <p class="muted">${escapeHtml(product.category)} • $${Number(product.price || 0).toFixed(2)} • Stock ${Number(product.stock || 0)}</p>
+                                    </div>
+                                `).join('') || '<div class="card">No products found.</div>'}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top:18px">
+                        <h2 class="subhead">Manage Products</h2>
+                        <div class="table">
+                            <table>
+                                <thead>
+                                    <tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${state.products.map((product) => `
+                                        <tr>
+                                            <td><strong>${escapeHtml(product.name)}</strong><br><span class="muted">${escapeHtml((product.description || '').slice(0, 90))}</span></td>
+                                            <td>${escapeHtml(product.category || '')}</td>
+                                            <td>$${Number(product.price || 0).toFixed(2)}</td>
+                                            <td>${Number(product.stock || 0)}</td>
+                                            <td><span class="pill ${product.is_active ? 'ok' : 'warn'}">${product.is_active ? 'Active' : 'Archived'}</span></td>
+                                            <td class="actions">
+                                                <button class="btn secondary tiny" type="button" onclick="editProduct(${product.id})">Edit</button>
+                                                <button class="btn danger tiny" type="button" onclick="archiveProduct(${product.id})">Archive</button>
+                                            </td>
+                                        </tr>
+                                    `).join('') || '<tr><td colspan="6">No products available.</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderPromotionsSection() {
+            return `
+                <section id="section-promotions" class="section">
+                    <div class="grid2">
+                        <div class="panel">
+                            <div class="notice">Offer cards appear below the homepage banner area. Coupons power checkout discounts and campaign codes.</div>
+                            <div class="form-card">
+                                <h3 id="offer-heading">Create Homepage Offer Card</h3>
+                                <div class="grid2">
+                                    <input id="offer-title" placeholder="Offer title">
+                                    <input id="offer-highlight_text" placeholder="Highlight text">
+                                    <input id="offer-coupon_code" placeholder="Coupon code to display">
+                                    <input id="offer-cta_label" placeholder="CTA label">
+                                    <input id="offer-cta_link" placeholder="CTA link">
+                                    <input id="offer-sort_order" type="number" min="0" placeholder="Sort order">
+                                    <label class="row"><input id="offer-active" type="checkbox" checked> Show offer card</label>
+                                </div>
+                                <div class="row" style="margin-top:10px">
+                                    <textarea id="offer-description" placeholder="Short public offer description"></textarea>
+                                </div>
+                                <div class="actions" style="margin-top:10px">
+                                    <button id="offer-save" class="btn primary" type="button" onclick="saveOffer()">Create Offer</button>
+                                    <button class="btn secondary" type="button" onclick="clearOfferForm()">Reset</button>
+                                </div>
+                            </div>
+                            <div class="form-card" style="margin-top:18px">
+                                <h3 id="coupon-heading">Create Coupon</h3>
+                                <div class="grid2">
+                                    <input id="coupon-code" placeholder="Coupon code">
+                                    <select id="coupon-discount_type"><option value="PERCENT">Percent</option><option value="FIXED">Fixed</option></select>
+                                    <input id="coupon-discount_value" type="number" min="0" step="0.01" placeholder="Discount value">
+                                    <input id="coupon-min_order_amount" type="number" min="0" step="0.01" placeholder="Min order amount">
+                                    <input id="coupon-usage_limit" type="number" min="0" step="1" placeholder="Usage limit">
+                                    <input id="coupon-expires_at" type="datetime-local">
+                                    <label class="row"><input id="coupon-active" type="checkbox" checked> Coupon active</label>
+                                </div>
+                                <div class="row" style="margin-top:10px">
+                                    <textarea id="coupon-description" placeholder="Coupon description"></textarea>
+                                </div>
+                                <div class="actions" style="margin-top:10px">
+                                    <button id="coupon-save" class="btn primary" type="button" onclick="saveCoupon()">Create Coupon</button>
+                                    <button class="btn secondary" type="button" onclick="clearCouponForm()">Reset</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h2 class="subhead">Offer Cards</h2>
+                            <div class="cards">
+                                ${state.offers.map((offer) => `
+                                    <div class="card">
+                                        <h4>${escapeHtml(offer.title)}</h4>
+                                        <p class="muted">${escapeHtml(offer.highlight_text || offer.description || '')}</p>
+                                        <div class="actions">
+                                            <button class="btn secondary tiny" type="button" onclick="editOffer(${offer.id})">Edit</button>
+                                            <button class="btn danger tiny" type="button" onclick="deleteOffer(${offer.id})">Delete</button>
+                                        </div>
+                                    </div>
+                                `).join('') || '<div class="card">No offers configured.</div>'}
+                            </div>
+                            <h2 class="subhead" style="margin-top:18px">Coupons</h2>
+                            <div class="cards">
+                                ${state.coupons.map((coupon) => `
+                                    <div class="card">
+                                        <h4>${escapeHtml(coupon.code)}</h4>
+                                        <p class="muted">${escapeHtml(coupon.description || '')}</p>
+                                        <p class="muted">${escapeHtml(coupon.discount_type)} ${Number(coupon.discount_value || 0)} • Used ${Number(coupon.used_count || 0)}</p>
+                                        <div class="actions">
+                                            <button class="btn secondary tiny" type="button" onclick="editCoupon(${coupon.id})">Edit</button>
+                                            <button class="btn danger tiny" type="button" onclick="deleteCoupon(${coupon.id})">Delete</button>
+                                        </div>
+                                    </div>
+                                `).join('') || '<div class="card">No coupons configured.</div>'}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderOrdersSection() {
+            const statusOptions = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
+            return `
+                <section id="section-orders" class="section">
+                    <div class="panel">
+                        <div class="notice">Use this section to manage real order operations. Update status as dispatch moves forward, or cancel when support needs to reverse an order.</div>
+                        <div class="table">
+                            <table>
+                                <thead>
+                                    <tr><th>Order</th><th>Amount</th><th>Status</th><th>Coupon</th><th>Actions</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${state.orders.map((order) => `
+                                        <tr>
+                                            <td><strong>${escapeHtml(order.order_number)}</strong><br><span class="muted">User #${order.user_id} • ${escapeHtml(order.city || '')}, ${escapeHtml(order.state || '')}</span></td>
+                                            <td>$${Number(order.total_amount || 0).toFixed(2)}</td>
+                                            <td><select id="order-status-${order.id}">${statusOptions.map((status) => `<option value="${status}" ${order.status === status ? 'selected' : ''}>${status}</option>`).join('')}</select></td>
+                                            <td>${escapeHtml(order.coupon_code || 'N/A')}</td>
+                                            <td class="actions">
+                                                <button class="btn primary tiny" type="button" onclick="changeOrderStatus(${order.id})">Save Status</button>
+                                                <button class="btn danger tiny" type="button" onclick="cancelOrder(${order.id})">Cancel Order</button>
+                                            </td>
+                                        </tr>
+                                    `).join('') || '<tr><td colspan="5">No orders found.</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderInventorySection() {
+            return `
+                <section id="section-inventory" class="section">
+                    <div class="panel">
+                        <div class="actions" style="justify-content:space-between">
+                            <div>
+                                <h2 class="subhead">Inventory Desk</h2>
+                                <p class="muted">Restock individual products, fix missing inventory rows, and keep public stock accurate.</p>
+                            </div>
+                            <button class="btn secondary" type="button" onclick="syncInventory()">Sync Missing Inventory Rows</button>
+                        </div>
+                        <div class="table">
+                            <table>
+                                <thead>
+                                    <tr><th>Product</th><th>Qty</th><th>Reserved</th><th>Available</th><th>Quick Restock</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${state.inventory.map((item) => `
+                                        <tr>
+                                            <td><strong>${escapeHtml(item.name)}</strong><br><span class="muted">${escapeHtml(item.category || '')}</span></td>
+                                            <td>${Number(item.quantity || 0)}</td>
+                                            <td>${Number(item.reserved_quantity || 0)}</td>
+                                            <td>${Number(item.available_quantity || 0)} ${Number(item.available_quantity || 0) <= Number(item.low_stock_threshold || 10) ? '<span class="pill bad" style="margin-left:8px">Low</span>' : ''}</td>
+                                            <td>
+                                                <div class="stack">
+                                                    <div class="row">
+                                                        <input id="restock-qty-${item.product_id}" class="inline-field" type="number" min="1" step="1" placeholder="Qty">
+                                                        <button class="btn primary tiny" type="button" onclick="restockProduct(${item.product_id})">Restock</button>
+                                                    </div>
+                                                    <input id="restock-notes-${item.product_id}" placeholder="Notes for movement log">
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('') || '<tr><td colspan="5">No inventory rows found.</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top:18px">
+                        <h2 class="subhead">Low Stock Alerts</h2>
+                        <div class="cards">
+                            ${state.lowStock.map((item) => `
+                                <div class="card">
+                                    <h4>${escapeHtml(item.name)}</h4>
+                                    <p class="muted">Available ${Number(item.available_quantity || 0)} • Reserved ${Number(item.reserved_quantity || 0)}</p>
+                                </div>
+                            `).join('') || '<div class="card">No low stock alerts.</div>'}
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderUsersSection() {
+            return `
+                <section id="section-users" class="section">
+                    <div class="panel">
+                        <div class="notice">Ban abusive users, deactivate accounts, or restore access. Admin users are marked so you can avoid disabling the wrong account.</div>
+                        <div class="table">
+                            <table>
+                                <thead>
+                                    <tr><th>User</th><th>Location</th><th>Status</th><th>Role</th><th>Actions</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${state.users.map((user) => `
+                                        <tr>
+                                            <td><strong>${escapeHtml(user.name)}</strong><br><span class="muted">${escapeHtml(user.email)}</span></td>
+                                            <td>${escapeHtml([user.city, user.state].filter(Boolean).join(', ') || 'N/A')}</td>
+                                            <td>${user.is_banned ? '<span class="pill bad">Banned</span>' : user.is_active ? '<span class="pill ok">Active</span>' : '<span class="pill warn">Inactive</span>'}</td>
+                                            <td>${user.is_admin ? '<span class="pill ok">Admin</span>' : 'Customer'}</td>
+                                            <td class="actions">
+                                                <button class="btn secondary tiny" type="button" onclick="updateUserStatus(${user.id}, { is_banned: ${user.is_banned ? 'false' : 'true'} })">${user.is_banned ? 'Unban' : 'Ban'}</button>
+                                                <button class="btn secondary tiny" type="button" onclick="updateUserStatus(${user.id}, { is_active: ${user.is_active ? 'false' : 'true'} })">${user.is_active ? 'Deactivate' : 'Activate'}</button>
+                                            </td>
+                                        </tr>
+                                    `).join('') || '<tr><td colspan="5">No users found.</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderPortal() {
+            const main = document.getElementById('main-content');
+            main.innerHTML = `
+                <div class="hero">
+                    <div class="panel">
+                        <h1 class="hero-title">Manage Your Shop From One Place</h1>
+                        <p class="muted">This admin portal controls what shoppers see and what your team operates. Homepage banners, product catalog, promotions, order flow, stock updates, and user access all live here.</p>
+                    </div>
+                    <div class="panel hero-highlight">
+                        <h2 class="subhead">Signed in as ${escapeHtml(state.me.name || 'Admin')}</h2>
+                        <p class="muted">${escapeHtml(state.me.email || '')}</p>
+                        <p class="muted">Use Banner Studio to publish festival announcements and sale slides to the public homepage.</p>
+                    </div>
+                </div>
+                <div id="portal-message" class="message"></div>
+                <div class="stats">
+                    ${statCard(state.products.length, 'Products')}
+                    ${statCard(state.banners.length, 'Homepage Banners')}
+                    ${statCard(state.offers.length, 'Offer Cards')}
+                    ${statCard(state.coupons.length, 'Coupons')}
+                    ${statCard(state.orders.length, 'Recent Orders')}
+                    ${statCard(state.lowStock.length, 'Low Stock Alerts')}
+                </div>
+                ${renderOverviewSection()}
+                ${renderBannersSection()}
+                ${renderCatalogSection()}
+                ${renderPromotionsSection()}
+                ${renderOrdersSection()}
+                ${renderInventorySection()}
+                ${renderUsersSection()}
+            `;
+
+            bindNav();
+            clearBannerForm();
+            clearProductForm();
+            clearOfferForm();
+            clearCouponForm();
+            ['banner-title', 'banner-subtitle', 'banner-badge', 'banner-image_url', 'banner-link_url', 'banner-background_color', 'banner-text_color', 'banner-sort_order'].forEach((id) => {
+                const node = document.getElementById(id);
+                if (node) {
+                    node.addEventListener('input', renderBannerPreview);
+                }
+            });
+        }
+
+        async function loadPortal() {
+            state.me = await fetchJson(`${API_URL}/me`, {}, 'Failed to load current user');
+            if (!state.me.authenticated || !state.me.is_admin) {
+                document.getElementById('main-content').innerHTML = '<div class="panel"><h2>Admin access required</h2><p>Please log in with an admin account such as <code>admin@shopeasy.local</code>.</p></div>';
+                return;
+            }
+
+            const [products, users, banners, offers, coupons, orders, inventory, lowStock] = await Promise.all([
+                fetchJson(`${API_URL}/admin/products?page=1&page_size=50`, {}, 'Failed to load products'),
+                fetchJson(`${API_URL}/admin/users?page=1&page_size=50`, {}, 'Failed to load users'),
+                fetchJson(`${API_URL}/admin/homepage/banners`, {}, 'Failed to load banners'),
+                fetchJson(`${API_URL}/admin/homepage/offers`, {}, 'Failed to load offers'),
+                fetchJson(`${API_URL}/admin/coupons`, {}, 'Failed to load coupons'),
+                fetchJson(`${API_URL}/admin/orders?page=1&page_size=50`, {}, 'Failed to load orders'),
+                fetchJson(`${API_URL}/admin/inventory`, {}, 'Failed to load inventory'),
+                fetchJson(`${API_URL}/admin/inventory/low-stock`, {}, 'Failed to load low stock')
+            ]);
+
+            state.products = products.products || [];
+            state.users = users.users || [];
+            state.banners = banners.banners || [];
+            state.offers = offers.offers || [];
+            state.coupons = coupons.coupons || [];
+            state.orders = orders.orders || [];
+            state.inventory = inventory.items || [];
+            state.lowStock = lowStock.low_stock_items || [];
+            renderPortal();
+        }
+
+        loadPortal().catch((error) => {
+            document.getElementById('main-content').innerHTML = `<div class="panel"><h2>Admin portal failed to load</h2><p>${escapeHtml(error.message)}</p></div>`;
+        });
+    </script>
+</body>
+</html>

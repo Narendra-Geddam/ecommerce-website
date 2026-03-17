@@ -275,10 +275,99 @@
 
     <script>
         const API_URL = '/api';
+        let appliedCoupon = null;
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem('access_token');
+            return token ? { 'Authorization': `Bearer ${token}` } : {};
+        }
+
+        async function getCsrfToken() {
+            const cached = sessionStorage.getItem('csrf_token');
+            if (cached) {
+                return cached;
+            }
+
+            const response = await fetch(`${API_URL}/csrf-token`, { credentials: 'include' });
+            const data = await readJsonResponse(response, 'Failed to load CSRF token');
+            sessionStorage.setItem('csrf_token', data.csrf_token);
+            return data.csrf_token;
+        }
+
+        async function readJsonResponse(response, fallbackMessage) {
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`${fallbackMessage}. Received ${contentType || 'unknown content type'}: ${text.slice(0, 80)}`);
+            }
+
+            return await response.json();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function escapeAttr(value) {
+            return escapeHtml(value).replace(/`/g, '&#96;');
+        }
+
+        function validateCheckoutForm({ name, mobile, address, city, state, pincode }) {
+            const normalizedPhone = String(mobile || '').replace(/\D/g, '');
+            const normalizedPincode = String(pincode || '').replace(/\D/g, '');
+
+            if (String(name || '').trim().length < 2) {
+                return 'Please enter your full name';
+            }
+            if (!/^\d{10}$/.test(normalizedPhone)) {
+                return 'Please enter a valid 10-digit mobile number';
+            }
+            if (!/^\d{6}$/.test(normalizedPincode)) {
+                return 'Please enter a valid 6-digit pincode';
+            }
+            if (!String(address || '').trim()) {
+                return 'Please enter your delivery address';
+            }
+            if (!String(city || '').trim()) {
+                return 'Please enter your city';
+            }
+            if (!String(state || '').trim()) {
+                return 'Please enter your state';
+            }
+            return null;
+        }
+
+        function updateOrderTotals(subtotal) {
+            const loginDiscount = subtotal * 0.10;
+            const couponDiscount = appliedCoupon ? Number(appliedCoupon.discount || 0) : 0;
+            const total = Math.max(0, subtotal - loginDiscount - couponDiscount);
+            document.getElementById('discount').textContent = `-$${loginDiscount.toFixed(2)}`;
+            document.getElementById('coupon-summary').textContent = appliedCoupon
+                ? `${appliedCoupon.code} (-$${couponDiscount.toFixed(2)})`
+                : 'No coupon applied';
+            document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+        }
+
+        function getCartHeaders() {
+            const cartId = localStorage.getItem('cart_id');
+            return {
+                ...getAuthHeaders(),
+                ...(cartId ? { 'X-Cart-ID': cartId } : {})
+            };
+        }
 
         async function checkAuth() {
-            const response = await fetch(`${API_URL}/me`, { credentials: 'include' });
-            return await response.json();
+            const response = await fetch(`${API_URL}/me`, {
+                credentials: 'include',
+                headers: getAuthHeaders()
+            });
+            return await readJsonResponse(response, 'Failed to load auth state');
         }
 
         async function init() {
@@ -297,8 +386,16 @@
             }
 
             // Load cart
-            const response = await fetch(`${API_URL}/cart`, { credentials: 'include' });
-            const products = await response.json();
+            const response = await fetch(`${API_URL}/cart`, {
+                credentials: 'include',
+                headers: getCartHeaders()
+            });
+            const cart = await readJsonResponse(response, 'Failed to load cart');
+            const products = cart.items || [];
+
+            if (cart.cart_id) {
+                localStorage.setItem('cart_id', cart.cart_id);
+            }
 
             if (products.length === 0) {
                 main.innerHTML = `
@@ -311,10 +408,7 @@
                 return;
             }
 
-            let subtotal = 0;
-            products.forEach(p => {
-                subtotal += p.price * p.quantity;
-            });
+            let subtotal = typeof cart.total === 'number' ? cart.total : 0;
 
             main.innerHTML = `
                 <h1>Checkout</h1>
@@ -324,32 +418,32 @@
                         <h2>Delivery Address</h2>
                         <div class="form-group">
                             <label>Full Name</label>
-                            <input type="text" id="name" value="${user.name || ''}" placeholder="Enter your full name">
+                            <input type="text" id="name" value="${escapeAttr(user.name || '')}" placeholder="Enter your full name">
                         </div>
                         <div class="form-group">
                             <label>Mobile Number</label>
-                            <input type="tel" id="mobile" value="${user.phone || ''}" placeholder="10-digit mobile number">
+                            <input type="tel" id="mobile" value="${escapeAttr(user.phone || '')}" placeholder="10-digit mobile number">
                         </div>
                         <div class="form-group">
                             <label>Pincode</label>
-                            <input type="text" id="pincode" value="${user.pincode || ''}" placeholder="6-digit pincode">
+                            <input type="text" id="pincode" value="${escapeAttr(user.pincode || '')}" placeholder="6-digit pincode">
                         </div>
                         <div class="form-group">
                             <label>Address</label>
-                            <input type="text" id="address" value="${user.address || ''}" placeholder="Flat, House no., Building, Company">
+                            <input type="text" id="address" value="${escapeAttr(user.address || '')}" placeholder="Flat, House no., Building, Company">
                         </div>
                         <div class="form-group">
                             <label>Locality/Town</label>
-                            <input type="text" id="locality" value="${user.city || ''}" placeholder="Locality, Town, City">
+                            <input type="text" id="locality" value="${escapeAttr(user.city || '')}" placeholder="Locality, Town, City">
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>City</label>
-                                <input type="text" id="city" value="${user.city || ''}" placeholder="City">
+                                <input type="text" id="city" value="${escapeAttr(user.city || '')}" placeholder="City">
                             </div>
                             <div class="form-group">
                                 <label>State</label>
-                                <input type="text" id="state" value="${user.state || ''}" placeholder="State">
+                                <input type="text" id="state" value="${escapeAttr(user.state || '')}" placeholder="State">
                             </div>
                         </div>
                     </div>
@@ -372,7 +466,7 @@
                     <div id="cart-items">
                         ${products.map(p => `
                             <div class="summary-item">
-                                <span>${p.name} × ${p.quantity}</span>
+                                <span>${escapeHtml(p.name)} × ${p.quantity}</span>
                                 <span>$${(p.price * p.quantity).toFixed(2)}</span>
                             </div>
                         `).join('')}
@@ -389,6 +483,14 @@
                         <span>Discount (10% login bonus)</span>
                         <span id="discount" style="color: #27ae60;">-$0.00</span>
                     </div>
+                    <div class="summary-item">
+                        <span>Coupon</span>
+                        <span id="coupon-summary">No coupon applied</span>
+                    </div>
+                    <div class="summary-item">
+                        <input type="text" id="coupon-code" placeholder="Coupon code" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                        <button type="button" class="track-btn" style="margin-left: 10px;" onclick="applyCoupon(${subtotal.toFixed(2)})">Apply</button>
+                    </div>
                     <div class="summary-item total">
                         <span>Total</span>
                         <span id="total">$${subtotal.toFixed(2)}</span>
@@ -401,10 +503,30 @@
             `;
 
             // Apply 10% discount for logged in users
-            const discount = subtotal * 0.10;
-            const total = subtotal - discount;
-            document.getElementById('discount').textContent = `-$${discount.toFixed(2)}`;
-            document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+            updateOrderTotals(subtotal);
+        }
+
+        async function applyCoupon(subtotal) {
+            const code = document.getElementById('coupon-code').value.trim();
+            if (!code) {
+                alert('Enter a coupon code first');
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/coupons/validate?code=${encodeURIComponent(code)}&subtotal=${encodeURIComponent(subtotal)}`, {
+                credentials: 'include',
+                headers: getAuthHeaders()
+            });
+            const result = await readJsonResponse(response, 'Failed to validate coupon');
+            if (result.valid) {
+                appliedCoupon = result;
+                updateOrderTotals(subtotal);
+                alert(`Coupon applied: ${result.code}`);
+            } else {
+                appliedCoupon = null;
+                updateOrderTotals(subtotal);
+                alert(result.error || 'Coupon is not valid');
+            }
         }
 
         async function placeOrder() {
@@ -415,30 +537,44 @@
             const state = document.getElementById('state').value;
             const pincode = document.getElementById('pincode').value;
             const paymentMethod = document.querySelector('input[name="payment"]:checked').value;
+            const cartId = localStorage.getItem('cart_id');
 
-            if (!name || !mobile || !address) {
-                alert('Please fill in all required fields');
+            const validationError = validateCheckoutForm({ name, mobile, address, city, state, pincode });
+            if (validationError) {
+                alert(validationError);
+                return;
+            }
+
+            if (!cartId) {
+                alert('Your cart session was not found. Please reload the cart and try again.');
                 return;
             }
 
             try {
                 const response = await fetch(`${API_URL}/orders`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        ...getAuthHeaders(),
+                        'X-CSRF-Token': await getCsrfToken(),
+                        'Content-Type': 'application/json'
+                    },
                     credentials: 'include',
                     body: JSON.stringify({
+                        cart_id: cartId,
                         address,
                         city,
                         state,
                         pincode,
                         phone: mobile,
-                        payment_method: paymentMethod
+                        payment_method: paymentMethod,
+                        coupon_code: appliedCoupon ? appliedCoupon.code : null
                     })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
+                    localStorage.removeItem('cart_id');
                     alert(`Order placed successfully! Order ID: #${result.order_id}\n\nThank you for shopping with ShopEasy!`);
                     window.location.href = '/orders.html';
                 } else {

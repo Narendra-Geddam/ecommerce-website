@@ -269,18 +269,98 @@
     <script>
         const API_URL = '/api';
 
-        async function checkAuth() {
-            const response = await fetch(`${API_URL}/me`, { credentials: 'include' });
+        function getAuthHeaders() {
+            const token = localStorage.getItem('access_token');
+            return token ? { 'Authorization': `Bearer ${token}` } : {};
+        }
+
+        async function getCsrfToken() {
+            const cached = sessionStorage.getItem('csrf_token');
+            if (cached) {
+                return cached;
+            }
+
+            const response = await fetch(`${API_URL}/csrf-token`, { credentials: 'include' });
+            const data = await readJsonResponse(response, 'Failed to load CSRF token');
+            sessionStorage.setItem('csrf_token', data.csrf_token);
+            return data.csrf_token;
+        }
+
+        async function readJsonResponse(response, fallbackMessage) {
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`${fallbackMessage}. Received ${contentType || 'unknown content type'}: ${text.slice(0, 80)}`);
+            }
+
             return await response.json();
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function escapeAttr(value) {
+            return escapeHtml(value).replace(/`/g, '&#96;');
+        }
+
+        function safeImageUrl(value) {
+            const url = String(value ?? '');
+            if (
+                url.startsWith('/static/') ||
+                url.startsWith('/images/') ||
+                url.startsWith('http://') ||
+                url.startsWith('https://') ||
+                url.startsWith('data:image/')
+            ) {
+                return escapeAttr(url);
+            }
+            return '';
+        }
+
+        function getCartHeaders() {
+            const cartId = localStorage.getItem('cart_id');
+            return {
+                ...getAuthHeaders(),
+                ...(cartId ? { 'X-Cart-ID': cartId } : {})
+            };
+        }
+
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/me`, {
+                    credentials: 'include',
+                    headers: getAuthHeaders()
+                });
+                return await readJsonResponse(response, 'Failed to load auth state');
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                return { authenticated: false };
+            }
+        }
+
         async function loadCart() {
-            const user = await checkAuth();
             const main = document.getElementById('main-content');
 
             try {
-                const response = await fetch(`${API_URL}/cart`, { credentials: 'include' });
-                const products = await response.json();
+                await checkAuth();
+
+                const response = await fetch(`${API_URL}/cart`, {
+                    credentials: 'include',
+                    headers: getCartHeaders()
+                });
+                const cart = await readJsonResponse(response, 'Failed to load cart');
+                const products = cart.items || [];
+
+                if (cart.cart_id) {
+                    localStorage.setItem('cart_id', cart.cart_id);
+                }
 
                 if (products.length === 0) {
                     main.innerHTML = `
@@ -293,23 +373,23 @@
                     return;
                 }
 
-                let total = 0;
+                let total = typeof cart.total === 'number' ? cart.total : 0;
                 main.innerHTML = '<h1>Shopping Cart</h1>';
 
                 main.innerHTML += products.map(product => {
                     const itemTotal = product.price * product.quantity;
-                    total += itemTotal;
+                    const productId = Number.isFinite(Number(product.id)) ? Number(product.id) : 0;
 
                     return `
                         <div class="cart-item">
-                            <img src="${product.image_url}" alt="${product.name}">
+                            <img src="${safeImageUrl(product.image_url)}" alt="${escapeAttr(product.name)}">
                             <div class="cart-item-details">
-                                <h3>${product.name}</h3>
-                                <p>${product.description}</p>
+                                <h3>${escapeHtml(product.name)}</h3>
+                                <p>${escapeHtml(product.description)}</p>
                                 <div class="price">$${product.price} × ${product.quantity} = $${itemTotal.toFixed(2)}</div>
                             </div>
                             <div>
-                                <button class="remove-btn" onclick="removeFromCart(${product.id})">Remove</button>
+                                <button class="remove-btn" onclick="removeFromCart(${productId})">Remove</button>
                             </div>
                         </div>
                     `;
@@ -333,10 +413,20 @@
 
         async function removeFromCart(productId) {
             try {
-                await fetch(`${API_URL}/cart/remove/${productId}`, {
+                const response = await fetch(`${API_URL}/cart/remove/${productId}`, {
                     method: 'POST',
-                    credentials: 'include'
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': await getCsrfToken(),
+                        ...getCartHeaders()
+                    },
+                    body: JSON.stringify({ quantity: 1 })
                 });
+                const result = await readJsonResponse(response, 'Failed to remove item from cart');
+                if (result.cart_count === 0) {
+                    localStorage.removeItem('cart_id');
+                }
                 loadCart();
             } catch (error) {
                 console.error('Error removing from cart:', error);
@@ -345,7 +435,15 @@
 
         async function clearCart() {
             try {
-                await fetch(`${API_URL}/cart/clear`, { method: 'POST', credentials: 'include' });
+                await readJsonResponse(await fetch(`${API_URL}/cart/clear`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        ...getCartHeaders(),
+                        'X-CSRF-Token': await getCsrfToken()
+                    }
+                }), 'Failed to clear cart');
+                localStorage.removeItem('cart_id');
                 loadCart();
             } catch (error) {
                 console.error('Error clearing cart:', error);

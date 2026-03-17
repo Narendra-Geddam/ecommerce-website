@@ -5,16 +5,21 @@ import uuid
 import psutil
 import socket
 import platform
+import re
 from flask import Flask, jsonify, request, session, make_response, g
 from flask_cors import CORS
 import psycopg2
+from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
 from collections import deque
 from threading import Lock
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
+app_secret_key = os.environ.get('SECRET_KEY')
+if not app_secret_key:
+    raise RuntimeError('SECRET_KEY environment variable is required')
+app.secret_key = app_secret_key
 
 # Enable CORS for frontend
 CORS(app, supports_credentials=True)
@@ -29,12 +34,26 @@ stats = {
 }
 
 # Database connection
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://ecommerce:password@database:5432/ecommerce')
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    raise RuntimeError('DATABASE_URL environment variable is required')
+
+db_pool = pool.ThreadedConnectionPool(
+    minconn=2,
+    maxconn=10,
+    dsn=DATABASE_URL
+)
+
 
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = db_pool.getconn()
     conn.autocommit = True
     return conn
+
+
+def release_db(conn):
+    if conn is not None:
+        db_pool.putconn(conn)
 
 def hash_password(password):
     """Hash password using bcrypt with automatic salt"""
@@ -43,6 +62,164 @@ def hash_password(password):
 def verify_password(password, hashed):
     """Verify password against bcrypt hash"""
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+
+EMAIL_RE = re.compile(r'^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$', re.IGNORECASE)
+PHONE_RE = re.compile(r'^\d{10}$')
+PINCODE_RE = re.compile(r'^\d{6}$')
+
+
+def normalize_optional_text(value, max_length=None):
+    text = str(value or '').strip()
+    if max_length is not None:
+        text = text[:max_length]
+    return text
+
+
+def normalize_email(value):
+    return normalize_optional_text(value, 255).lower()
+
+
+def normalize_phone(value):
+    return re.sub(r'\D', '', str(value or ''))
+
+
+def validate_name(value):
+    name = normalize_optional_text(value, 100)
+    if len(name) < 2:
+        return False, 'Name must be at least 2 characters'
+    return True, name
+
+
+def validate_email(value):
+    email = normalize_email(value)
+    if not EMAIL_RE.match(email):
+        return False, 'Invalid email format'
+    return True, email
+
+
+def validate_password(value):
+    password = str(value or '')
+    if len(password) < 8:
+        return False, 'Password must be at least 8 characters'
+    if not re.search(r'[A-Za-z]', password) or not re.search(r'\d', password):
+        return False, 'Password must include at least one letter and one number'
+    return True, password
+
+
+def validate_phone(value, required=False):
+    phone = normalize_phone(value)
+    if not phone:
+        if required:
+            return False, 'Phone number is required'
+        return True, ''
+    if not PHONE_RE.match(phone):
+        return False, 'Phone number must be 10 digits'
+    return True, phone
+
+
+def validate_pincode(value, required=False):
+    pincode = re.sub(r'\D', '', str(value or ''))
+    if not pincode:
+        if required:
+            return False, 'Pincode is required'
+        return True, ''
+    if not PINCODE_RE.match(pincode):
+        return False, 'Pincode must be 6 digits'
+    return True, pincode
+
+
+def validate_registration_payload(data):
+    sanitized = {}
+
+    ok, result = validate_name(data.get('name'))
+    if not ok:
+        return False, result, None
+    sanitized['name'] = result
+
+    ok, result = validate_email(data.get('email'))
+    if not ok:
+        return False, result, None
+    sanitized['email'] = result
+
+    ok, result = validate_password(data.get('password'))
+    if not ok:
+        return False, result, None
+    sanitized['password'] = result
+
+    ok, result = validate_phone(data.get('phone'))
+    if not ok:
+        return False, result, None
+    sanitized['phone'] = result
+
+    ok, result = validate_pincode(data.get('pincode'))
+    if not ok:
+        return False, result, None
+    sanitized['pincode'] = result
+
+    sanitized['address'] = normalize_optional_text(data.get('address'), 255)
+    sanitized['city'] = normalize_optional_text(data.get('city'), 100)
+    sanitized['state'] = normalize_optional_text(data.get('state'), 100)
+    return True, None, sanitized
+
+
+def validate_profile_payload(data):
+    sanitized = {}
+
+    ok, result = validate_name(data.get('name'))
+    if not ok:
+        return False, result, None
+    sanitized['name'] = result
+
+    ok, result = validate_phone(data.get('phone'))
+    if not ok:
+        return False, result, None
+    sanitized['phone'] = result
+
+    ok, result = validate_pincode(data.get('pincode'))
+    if not ok:
+        return False, result, None
+    sanitized['pincode'] = result
+
+    sanitized['address'] = normalize_optional_text(data.get('address'), 255)
+    sanitized['city'] = normalize_optional_text(data.get('city'), 100)
+    sanitized['state'] = normalize_optional_text(data.get('state'), 100)
+    return True, None, sanitized
+
+
+def validate_shipping_payload(data):
+    sanitized = {}
+
+    ok, result = validate_name(data.get('name', 'Guest User'))
+    if not ok:
+        return False, result, None
+    sanitized['name'] = result
+
+    ok, result = validate_phone(data.get('phone'), required=True)
+    if not ok:
+        return False, result, None
+    sanitized['phone'] = result
+
+    ok, result = validate_pincode(data.get('pincode'), required=True)
+    if not ok:
+        return False, result, None
+    sanitized['pincode'] = result
+
+    address = normalize_optional_text(data.get('address'), 255)
+    city = normalize_optional_text(data.get('city'), 100)
+    state = normalize_optional_text(data.get('state'), 100)
+    if not address:
+        return False, 'Address is required', None
+    if not city:
+        return False, 'City is required', None
+    if not state:
+        return False, 'State is required', None
+
+    sanitized['address'] = address
+    sanitized['city'] = city
+    sanitized['state'] = state
+    sanitized['payment_method'] = normalize_optional_text(data.get('payment_method'), 30) or 'COD'
+    return True, None, sanitized
 
 # Request tracking middleware
 @app.before_request
@@ -131,44 +308,74 @@ def get_db_status():
         cur = conn.cursor()
         cur.execute('SELECT 1')
         cur.close()
-        conn.close()
+        release_db(conn)
         return {'status': 'healthy', 'latency_ms': 0}
     except Exception as e:
         return {'status': 'unhealthy', 'error': str(e)}
 
 @app.route('/products')
 def get_products():
-    """API endpoint to get all products"""
+    """API endpoint to get paginated products"""
     category = request.args.get('category')
     search = request.args.get('search')
+    raw_page = request.args.get('page', '1')
+    raw_page_size = request.args.get('page_size', '12')
+
+    try:
+        page = max(1, int(raw_page))
+        page_size = min(100, max(1, int(raw_page_size)))
+    except ValueError:
+        return jsonify({'error': 'Invalid pagination parameters'}), 400
+
+    offset = (page - 1) * page_size
 
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     query = 'SELECT * FROM products WHERE 1=1'
+    count_query = 'SELECT COUNT(*) AS total FROM products WHERE 1=1'
     params = []
 
     if category and category != 'All':
         query += ' AND category = %s'
+        count_query += ' AND category = %s'
         params.append(category)
 
     if search:
         query += ' AND (name ILIKE %s OR description ILIKE %s)'
-        params.extend([f'%{search}%', f'%{search}%'])
+        count_query += ' AND (name ILIKE %s OR description ILIKE %s)'
+        search_term = f'%{search}%'
+        params.extend([search_term, search_term])
 
-    query += ' ORDER BY id'
+    cur.execute(count_query, params)
+    total = cur.fetchone()['total']
 
-    cur.execute(query, params)
+    query += ' ORDER BY id LIMIT %s OFFSET %s'
+    paginated_params = params + [page_size, offset]
+
+    cur.execute(query, paginated_params)
     products = cur.fetchall()
     cur.close()
-    conn.close()
+    release_db(conn)
 
     # Convert Decimal to float for JSON serialization
     for p in products:
         p['price'] = float(p['price'])
         p['stock'] = int(p['stock']) if p['stock'] else 0
 
-    return jsonify(products)
+    total_pages = (total + page_size - 1) // page_size if total else 0
+
+    return jsonify({
+        'products': products,
+        'pagination': {
+            'page': page,
+            'page_size': page_size,
+            'total': total,
+            'total_pages': total_pages,
+            'has_next': page < total_pages,
+            'has_prev': page > 1 and total_pages > 0
+        }
+    })
 
 @app.route('/products/<int:product_id>')
 def get_product(product_id):
@@ -178,7 +385,7 @@ def get_product(product_id):
     cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
     product = cur.fetchone()
     cur.close()
-    conn.close()
+    release_db(conn)
     if product:
         product['price'] = float(product['price'])
         product['stock'] = int(product['stock']) if product['stock'] else 0
@@ -193,20 +400,24 @@ def get_categories():
     cur.execute('SELECT DISTINCT category FROM products ORDER BY category')
     categories = [row['category'] for row in cur.fetchall()]
     cur.close()
-    conn.close()
+    release_db(conn)
     return jsonify(['All'] + categories)
 
 # Auth endpoints
 @app.route('/api/register', methods=['POST'])
 def register():
     """Register a new user"""
-    data = request.get_json()
+    data = request.get_json() or {}
 
     required = ['name', 'email', 'password']
     if not all(k in data for k in required):
         return jsonify({'success': False, 'error': 'Missing required fields'}), 400
 
-    hashed_pw = hash_password(data['password'])
+    is_valid, error, sanitized = validate_registration_payload(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    hashed_pw = hash_password(sanitized['password'])
 
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -216,9 +427,9 @@ def register():
             INSERT INTO users (name, email, password, phone, address, city, state, pincode)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id, name, email
-        ''', (data['name'], data['email'], hashed_pw,
-              data.get('phone', ''), data.get('address', ''),
-              data.get('city', ''), data.get('state', ''), data.get('pincode', '')))
+        ''', (sanitized['name'], sanitized['email'], hashed_pw,
+              sanitized['phone'], sanitized['address'],
+              sanitized['city'], sanitized['state'], sanitized['pincode']))
 
         user = cur.fetchone()
         session['user_id'] = user['id']
@@ -230,14 +441,19 @@ def register():
         return jsonify({'success': False, 'error': 'Email already exists'}), 400
     finally:
         cur.close()
-        conn.close()
+        release_db(conn)
 
 @app.route('/api/login', methods=['POST'])
 def login():
     """Login user"""
-    data = request.get_json()
+    data = request.get_json() or {}
 
     if not data or 'email' not in data or 'password' not in data:
+        return jsonify({'success': False, 'error': 'Email and password required'}), 400
+
+    email = normalize_email(data.get('email'))
+    password = str(data.get('password', ''))
+    if not email or not password:
         return jsonify({'success': False, 'error': 'Email and password required'}), 400
 
     conn = get_db()
@@ -246,13 +462,13 @@ def login():
     cur.execute('''
         SELECT id, name, email, password FROM users
         WHERE email = %s
-    ''', (data['email'],))
+    ''', (email,))
 
     user = cur.fetchone()
     cur.close()
-    conn.close()
+    release_db(conn)
 
-    if user and verify_password(data['password'], user['password']):
+    if user and verify_password(password, user['password']):
         session['user_id'] = user['id']
         session['user_name'] = user['name']
         session['user_email'] = user['email']
@@ -280,7 +496,7 @@ def get_current_user():
     ''', (session['user_id'],))
     user = cur.fetchone()
     cur.close()
-    conn.close()
+    release_db(conn)
 
     if user:
         user['authenticated'] = True
@@ -294,7 +510,10 @@ def update_profile():
     if 'user_id' not in session:
         return jsonify({'success': False, 'error': 'Not authenticated'}), 401
 
-    data = request.get_json()
+    data = request.get_json() or {}
+    is_valid, error, sanitized = validate_profile_payload(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
 
     conn = get_db()
     cur = conn.cursor()
@@ -302,14 +521,14 @@ def update_profile():
     cur.execute('''
         UPDATE users SET name = %s, phone = %s, address = %s, city = %s, state = %s, pincode = %s
         WHERE id = %s
-    ''', (data.get('name'), data.get('phone'), data.get('address'),
-          data.get('city'), data.get('state'), data.get('pincode'),
+    ''', (sanitized['name'], sanitized['phone'], sanitized['address'],
+          sanitized['city'], sanitized['state'], sanitized['pincode'],
           session['user_id']))
 
     cur.close()
-    conn.close()
+    release_db(conn)
 
-    session['user_name'] = data.get('name')
+    session['user_name'] = sanitized['name']
 
     return jsonify({'success': True})
 
@@ -333,7 +552,7 @@ def get_cart():
     cur.execute(f'SELECT * FROM products WHERE id = ANY(%s)', (product_ids,))
     products = cur.fetchall()
     cur.close()
-    conn.close()
+    release_db(conn)
 
     result = []
     for p in products:
@@ -403,7 +622,7 @@ def get_orders():
         order['items'] = cur.fetchall()
 
     cur.close()
-    conn.close()
+    release_db(conn)
 
     return jsonify(orders)
 
@@ -413,51 +632,90 @@ def create_order():
     if 'user_id' not in session:
         return jsonify({'success': False, 'error': 'Please login to place order'}), 401
 
-    data = request.get_json()
+    data = request.get_json() or {}
     cart = session.get('cart', [])
 
     if not cart:
         return jsonify({'success': False, 'error': 'Cart is empty'}), 400
 
+    is_valid, error, sanitized = validate_shipping_payload(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
     conn = get_db()
+    conn.autocommit = False
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    # Get products and calculate total
-    product_counts = {}
-    for pid in cart:
-        product_counts[pid] = product_counts.get(pid, 0) + 1
+    try:
+        # Get products and calculate total
+        product_counts = {}
+        for pid in cart:
+            product_counts[pid] = product_counts.get(pid, 0) + 1
 
-    product_ids = list(product_counts.keys())
-    cur.execute(f'SELECT * FROM products WHERE id = ANY(%s)', (product_ids,))
-    products = cur.fetchall()
+        product_ids = list(product_counts.keys())
+        cur.execute('SELECT * FROM products WHERE id = ANY(%s) FOR UPDATE', (product_ids,))
+        products = cur.fetchall()
 
-    total = sum(p['price'] * product_counts[p['id']] for p in products)
+        products_by_id = {p['id']: p for p in products}
+        for product_id, quantity in product_counts.items():
+            product = products_by_id.get(product_id)
+            available_stock = int(product['stock']) if product and product['stock'] is not None else 0
+            if not product or available_stock < quantity:
+                conn.rollback()
+                return jsonify({
+                    'success': False,
+                    'error': 'Insufficient stock',
+                    'product_id': product_id,
+                    'available': available_stock,
+                    'requested': quantity
+                }), 400
 
-    # Set delivery date (7 days from now)
-    delivery_date = datetime.now() + timedelta(days=7)
+        total = sum(p['price'] * product_counts[p['id']] for p in products)
 
-    # Create order
-    cur.execute('''
-        INSERT INTO orders (user_id, total_amount, status, shipping_address, city, state, pincode, phone, payment_method, delivery_date)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING id
-    ''', (session['user_id'], total, 'Processing', data.get('address', ''),
-          data.get('city', ''), data.get('state', ''), data.get('pincode', ''),
-          data.get('phone', ''), data.get('payment_method', 'COD'), delivery_date))
+        # Set delivery date (7 days from now)
+        delivery_date = datetime.now() + timedelta(days=7)
 
-    order_id = cur.fetchone()['id']
-
-    # Create order items
-    for p in products:
+        # Create order
         cur.execute('''
-            INSERT INTO order_items (order_id, product_id, quantity, price)
-            VALUES (%s, %s, %s, %s)
-        ''', (order_id, p['id'], product_counts[p['id']], p['price']))
+            INSERT INTO orders (user_id, total_amount, status, shipping_address, city, state, pincode, phone, payment_method, delivery_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        ''', (session['user_id'], total, 'Processing', sanitized['address'],
+              sanitized['city'], sanitized['state'], sanitized['pincode'],
+              sanitized['phone'], sanitized['payment_method'], delivery_date))
 
-    cur.close()
-    conn.close()
+        order_id = cur.fetchone()['id']
 
-    # Clear cart
+        # Create order items
+        for p in products:
+            cur.execute('''
+                INSERT INTO order_items (order_id, product_id, quantity, price)
+                VALUES (%s, %s, %s, %s)
+            ''', (order_id, p['id'], product_counts[p['id']], p['price']))
+
+            cur.execute('''
+                UPDATE products
+                SET stock = stock - %s
+                WHERE id = %s
+            ''', (product_counts[p['id']], p['id']))
+
+            cur.execute('''
+                UPDATE inventory
+                SET quantity = quantity - %s
+                WHERE product_id = %s
+            ''', (product_counts[p['id']], p['id']))
+
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'error': 'Failed to create order', 'message': str(e)}), 500
+    finally:
+        conn.autocommit = True
+        cur.close()
+        release_db(conn)
+
+    # Clear cart only after a successful commit
     session.pop('cart', None)
 
     return jsonify({'success': True, 'order_id': order_id})
@@ -504,7 +762,7 @@ def get_order(order_id):
     order['tracking_steps'] = status_steps.get(order['status'], status_steps['Processing'])
 
     cur.close()
-    conn.close()
+    release_db(conn)
 
     return jsonify(order)
 
@@ -521,7 +779,7 @@ def ready():
         cur = conn.cursor()
         cur.execute('SELECT 1')
         cur.close()
-        conn.close()
+        release_db(conn)
         return jsonify({
             'status': 'ready',
             'service': 'flask',
@@ -567,7 +825,7 @@ def get_monitor_services():
         cur = conn.cursor()
         cur.execute('SELECT 1')
         cur.close()
-        conn.close()
+        release_db(conn)
         db_latency = round((time.time() - db_start) * 1000, 2)
         db_status = 'healthy'
     except Exception as e:
@@ -702,4 +960,4 @@ def get_monitor_system():
         })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)

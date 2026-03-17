@@ -169,6 +169,17 @@
             cursor: pointer;
         }
 
+        .cancel-btn {
+            padding: 10px 20px;
+            background: #fff0f0;
+            color: #c0392b;
+            border: 1px solid #f3b3ad;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
         .tracking-steps {
             display: flex;
             justify-content: space-between;
@@ -284,9 +295,70 @@
     <script>
         const API_URL = '/api';
 
-        async function checkAuth() {
-            const response = await fetch(`${API_URL}/me`, { credentials: 'include' });
+        function getAuthHeaders() {
+            const token = localStorage.getItem('access_token');
+            return token ? { 'Authorization': `Bearer ${token}` } : {};
+        }
+
+        function clearAuth() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+        }
+
+        async function readJsonResponse(response, fallbackMessage) {
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`${fallbackMessage}. Received ${contentType || 'unknown content type'}: ${text.slice(0, 80)}`);
+            }
+
             return await response.json();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function escapeAttr(value) {
+            return escapeHtml(value).replace(/`/g, '&#96;');
+        }
+
+        function safeImageUrl(value) {
+            const url = String(value ?? '');
+            if (
+                url.startsWith('/static/') ||
+                url.startsWith('/images/') ||
+                url.startsWith('http://') ||
+                url.startsWith('https://') ||
+                url.startsWith('data:image/')
+            ) {
+                return escapeAttr(url);
+            }
+            return '';
+        }
+
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/me`, {
+                    credentials: 'include',
+                    headers: getAuthHeaders()
+                });
+                const data = await readJsonResponse(response, 'Failed to load auth state');
+                if (!data.authenticated) {
+                    clearAuth();
+                }
+                return data;
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                clearAuth();
+                return { authenticated: false };
+            }
         }
 
         async function loadOrders() {
@@ -303,8 +375,12 @@
                 return;
             }
 
-            const response = await fetch(`${API_URL}/orders`, { credentials: 'include' });
-            const orders = await response.json();
+            const response = await fetch(`${API_URL}/orders`, {
+                credentials: 'include',
+                headers: getAuthHeaders()
+            });
+            const data = await readJsonResponse(response, 'Failed to load orders');
+            const orders = data.orders || [];
 
             if (orders.length === 0) {
                 main.innerHTML = `
@@ -330,9 +406,9 @@
 
                 const itemsHtml = order.items.map(item => `
                     <div class="order-item">
-                        <img src="${item.image_url}" alt="${item.name}">
+                        <img src="${safeImageUrl(item.image_url)}" alt="${escapeAttr(item.name)}">
                         <div class="order-item-details">
-                            <h4>${item.name}</h4>
+                            <h4>${escapeHtml(item.name)}</h4>
                             <p>Qty: ${item.quantity} × $${item.price}</p>
                         </div>
                     </div>
@@ -345,7 +421,7 @@
                     return `
                         <div class="tracking-step ${completed ? 'completed' : ''}">
                             <div class="step-icon">${completed ? '✓' : i + 1}</div>
-                            <p>${step}</p>
+                            <p>${escapeHtml(step)}</p>
                         </div>
                     `;
                 }).join('');
@@ -355,16 +431,19 @@
                         <div class="order-header">
                             <div>
                                 <div class="order-id">Order #${order.id}</div>
-                                <div class="order-date">${orderDate}</div>
+                                <div class="order-date">${escapeHtml(orderDate)}</div>
                             </div>
-                            <span class="order-status ${statusClass}">${order.status}</span>
+                            <span class="order-status ${statusClass}">${escapeHtml(order.status)}</span>
                         </div>
                         <div class="order-items">
                             ${itemsHtml}
                         </div>
                         <div class="order-footer">
-                            <span class="order-total">Total: $${order.total_amount.toFixed(2)}</span>
-                            <button class="track-btn" onclick="toggleTracking(${order.id})">Track Order</button>
+                            <span class="order-total">Total: $${order.total_amount.toFixed(2)}${order.coupon_code ? ` | Coupon ${escapeHtml(order.coupon_code)} (-$${Number(order.discount_amount || 0).toFixed(2)})` : ''}</span>
+                            <div>
+                                <button class="track-btn" onclick="toggleTracking(${order.id})">Track Order</button>
+                                ${order.status === 'Processing' ? `<button class="cancel-btn" onclick="cancelOrder(${order.id})">Cancel</button>` : ''}
+                            </div>
                         </div>
                         <div id="tracking-${order.id}" class="tracking-steps" style="display: none;">
                             ${stepsHtml}
@@ -381,10 +460,53 @@
             tracking.style.display = tracking.style.display === 'none' ? 'flex' : 'none';
         }
 
+        async function getCsrfToken() {
+            const cached = sessionStorage.getItem('csrf_token');
+            if (cached) {
+                return cached;
+            }
+            const response = await fetch(`${API_URL}/csrf-token`, { credentials: 'include' });
+            const data = await readJsonResponse(response, 'Failed to load CSRF token');
+            sessionStorage.setItem('csrf_token', data.csrf_token);
+            return data.csrf_token;
+        }
+
+        async function cancelOrder(orderId) {
+            if (!confirm('Cancel this order?')) {
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/orders/${orderId}/cancel`, {
+                method: 'POST',
+                headers: {
+                    ...getAuthHeaders(),
+                    'X-CSRF-Token': await getCsrfToken(),
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({})
+            });
+            const result = await readJsonResponse(response, 'Failed to cancel order');
+            if (result.success) {
+                loadOrders();
+            } else {
+                alert(result.error || 'Failed to cancel order');
+            }
+        }
+
         async function loadCartCount() {
             try {
-                const response = await fetch(`${API_URL}/cart/count`, { credentials: 'include' });
-                const data = await response.json();
+                const headers = { ...getAuthHeaders() };
+                const cartId = localStorage.getItem('cart_id');
+                if (cartId) {
+                    headers['X-Cart-ID'] = cartId;
+                }
+
+                const response = await fetch(`${API_URL}/cart/count`, {
+                    credentials: 'include',
+                    headers: headers
+                });
+                const data = await readJsonResponse(response, 'Failed to load cart count');
                 document.getElementById('cart-count').textContent = data.count;
             } catch (e) {}
         }

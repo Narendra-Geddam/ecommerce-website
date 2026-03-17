@@ -1,0 +1,980 @@
+openapi: 3.0.3
+info:
+  title: ShopEasy Gateway API
+  version: 1.0.0
+  description: |
+    OpenAPI description for the gateway-facing ShopEasy API.
+
+    Notes:
+    - Browser clients must fetch `GET /api/csrf-token` and send `X-CSRF-Token` on mutating requests.
+    - Authenticated routes use `Authorization: Bearer <access_token>`.
+    - Guest cart routes use `X-Cart-ID` when a guest cart has already been created.
+servers:
+  - url: http://localhost
+    description: Local storefront + gateway via Nginx
+  - url: http://localhost:5000
+    description: Direct gateway access
+tags:
+  - name: Health
+  - name: Security
+  - name: Auth
+  - name: Products
+  - name: Cart
+  - name: Orders
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Gateway health check
+      responses:
+        '200':
+          description: Gateway is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /ready:
+    get:
+      tags: [Health]
+      summary: Gateway readiness check
+      responses:
+        '200':
+          description: Gateway is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+        '503':
+          description: Gateway is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+  /live:
+    get:
+      tags: [Health]
+      summary: Gateway liveness check
+      responses:
+        '200':
+          description: Gateway is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveResponse'
+  /api/csrf-token:
+    get:
+      tags: [Security]
+      summary: Issue a CSRF token for browser clients
+      responses:
+        '200':
+          description: CSRF token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrf_token:
+                    type: string
+                required: [csrf_token]
+  /api/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Validation error or duplicate email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+        '403':
+          description: Missing or invalid CSRF token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitResponse'
+  /api/login:
+    post:
+      tags: [Auth]
+      summary: Login and receive JWT tokens
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+        '403':
+          description: Missing or invalid CSRF token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitResponse'
+  /api/logout:
+    post:
+      tags: [Auth]
+      summary: Logout and blacklist the access token
+      security:
+        - bearerAuth: []
+        - csrfToken: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                required: [success]
+        '401':
+          description: Missing or invalid authorization header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+        '403':
+          description: Missing or invalid CSRF token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/me:
+    get:
+      tags: [Auth]
+      summary: Get current auth state and profile summary
+      responses:
+        '200':
+          description: Guest or authenticated user state
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GuestMeResponse'
+                  - $ref: '#/components/schemas/AuthenticatedMeResponse'
+  /api/profile:
+    put:
+      tags: [Auth]
+      summary: Update the authenticated user's profile
+      security:
+        - bearerAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+  /api/products:
+    get:
+      tags: [Products]
+      summary: List products with filtering and pagination
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: min_price
+          schema:
+            type: number
+        - in: query
+          name: max_price
+          schema:
+            type: number
+        - in: query
+          name: sort_by
+          schema:
+            type: string
+            enum: [id, name, price, category, stock, created_at]
+        - in: query
+          name: sort_order
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Product page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+  /api/products/{product_id}:
+    get:
+      tags: [Products]
+      summary: Get a single product
+      parameters:
+        - in: path
+          name: product_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/categories:
+    get:
+      tags: [Products]
+      summary: List product categories
+      responses:
+        '200':
+          description: Categories returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /api/cart:
+    get:
+      tags: [Cart]
+      summary: Get the current guest or authenticated cart
+      parameters:
+        - $ref: '#/components/parameters/XCartId'
+      responses:
+        '200':
+          description: Cart payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+  /api/cart/add/{product_id}:
+    post:
+      tags: [Cart]
+      summary: Add a product to the cart
+      security:
+        - csrfToken: []
+      parameters:
+        - in: path
+          name: product_id
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/XCartId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Item added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMutationResponse'
+        '403':
+          description: Missing or invalid CSRF token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/cart/remove/{product_id}:
+    post:
+      tags: [Cart]
+      summary: Remove quantity or remove an item from the cart
+      security:
+        - csrfToken: []
+      parameters:
+        - in: path
+          name: product_id
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/XCartId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Item removed or reduced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  cart_count:
+                    type: integer
+                required: [success, cart_count]
+  /api/cart/clear:
+    post:
+      tags: [Cart]
+      summary: Clear the current cart
+      security:
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/XCartId'
+      responses:
+        '200':
+          description: Cart cleared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
+  /api/cart/count:
+    get:
+      tags: [Cart]
+      summary: Get total item count in the cart
+      parameters:
+        - $ref: '#/components/parameters/XCartId'
+      responses:
+        '200':
+          description: Cart count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                required: [count]
+  /api/cart/merge:
+    post:
+      tags: [Cart]
+      summary: Merge a guest cart into the authenticated user's cart
+      security:
+        - bearerAuth: []
+        - csrfToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                guest_cart_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Merge result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  cart_id:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+                required: [success]
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/orders:
+    get:
+      tags: [Orders]
+      summary: Get paginated order history for the authenticated user
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Order page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Orders]
+      summary: Create a new order from a cart
+      security:
+        - bearerAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '200':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponse'
+        '400':
+          description: Validation error, empty cart, or insufficient stock
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+                  - $ref: '#/components/schemas/StockErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/orders/{order_id}:
+    get:
+      tags: [Orders]
+      summary: Get a single order with items and tracking steps
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: order_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+  parameters:
+    XCartId:
+      in: header
+      name: X-Cart-ID
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Guest cart identifier returned by cart mutation endpoints
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required: [status, service]
+    ReadyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        services:
+          type: object
+          additionalProperties:
+            type: string
+      required: [status, service, services]
+    LiveResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+      required: [status, service]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required: [error]
+    RateLimitResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        reset_time:
+          type: integer
+        retry_after:
+          type: integer
+      required: [error]
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+      required: [id, name, email]
+    AuthSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: integer
+      required: [success, user, access_token, refresh_token, token_type, expires_in]
+    AuthErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+      required: [success, error]
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+      required: [name, email, password]
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required: [email, password]
+    GuestMeResponse:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+          enum: [false]
+      required: [authenticated]
+    AuthenticatedMeResponse:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+          enum: [true]
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required: [authenticated, id, name, email]
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+      required: [name]
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        image_url:
+          type: string
+        category:
+          type: string
+        stock:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+      required: [id, name, price]
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+      required: [page, page_size, total, total_pages]
+    ProductListResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required: [products, pagination]
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        image_url:
+          type: string
+        category:
+          type: string
+        stock:
+          type: integer
+        quantity:
+          type: integer
+      required: [id, name, price, quantity]
+    CartResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        cart_id:
+          type: string
+          nullable: true
+          format: uuid
+        total:
+          type: number
+      required: [items, cart_id, total]
+    CartMutationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        cart_id:
+          type: string
+          format: uuid
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+        cart_count:
+          type: integer
+      required: [success, cart_id, product_id, quantity, cart_count]
+    OrderItem:
+      type: object
+      properties:
+        quantity:
+          type: integer
+        price:
+          type: number
+        product_id:
+          type: integer
+        name:
+          type: string
+        image_url:
+          type: string
+      required: [quantity, price]
+    OrderSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_number:
+          type: string
+        total_amount:
+          type: number
+        status:
+          type: string
+        shipping_address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+        payment_method:
+          type: string
+        order_date:
+          type: string
+          format: date-time
+        delivery_date:
+          type: string
+          format: date-time
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+      required: [id, order_number, total_amount, status, items]
+    OrderListResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required: [orders, pagination]
+    CreateOrderRequest:
+      type: object
+      properties:
+        cart_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pincode:
+          type: string
+        phone:
+          type: string
+        payment_method:
+          type: string
+      required: [cart_id, address, city, state, pincode, phone]
+    CreateOrderResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        order_id:
+          type: integer
+        order_number:
+          type: string
+        total:
+          type: number
+      required: [success, order_id, order_number, total]
+    StockErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        available:
+          type: integer
+        requested:
+          type: integer
+      required: [error]
+    OrderDetail:
+      allOf:
+        - $ref: '#/components/schemas/OrderSummary'
+        - type: object
+          properties:
+            phone:
+              type: string
+            tracking_steps:
+              type: array
+              items:
+                type: string

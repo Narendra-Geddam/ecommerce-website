@@ -288,10 +288,10 @@ metadata:
   namespace: ecommerce
 type: Opaque
 stringData:
-  db-user: ecommerce
-  db-password: password
-  database-url: postgresql://ecommerce:password@database:5432/ecommerce
-  secret-key: your-production-secret-key-change-me
+  db-user: "<set-in-cluster>"
+  db-password: "<set-in-cluster>"
+  database-url: "<set-in-cluster>"
+  secret-key: "<set-in-cluster>"
 ---
 # Persistent Volume Claim for PostgreSQL
 apiVersion: v1

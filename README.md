@@ -1,623 +1,379 @@
-<div align="center">
+# ShopEasy E-Commerce Platform
 
-# 🛒 ShopEasy E-Commerce Platform
+ShopEasy is a Docker-based e-commerce demo that now runs on a microservices-oriented local stack with a legacy Flask app still present during migration.
 
-<img src="https://img.shields.io/badge/Flask-3.1.3-000000?style=for-the-badge&logo=flask&logoColor=white" alt="Flask">
-<img src="https://img.shields.io/badge/PostgreSQL-15-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
-<img src="https://img.shields.io/badge/Nginx-Alpine-009639?style=for-the-badge&logo=nginx&logoColor=white" alt="Nginx">
-<img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
+## Stack
 
-<img src="https://img.shields.io/github/last-commit/Narendra-Geddam/ecommerce-website?style=for-the-badge" alt="Last Commit">
-<img src="https://img.shields.io/github/languages/top/Narendra-Geddam/ecommerce-website?style=for-the-badge" alt="Language">
-<img src="https://img.shields.io/github/issues/Narendra-Geddam/ecommerce-website?style=for-the-badge" alt="Issues">
-<img src="https://img.shields.io/github/license/Narendra-Geddam/ecommerce-website?style=for-the-badge" alt="License">
+- `presentation` (`http://localhost`) serves the storefront with Nginx
+- `gateway` (`http://localhost/api/...`) routes API traffic and handles auth context, CSRF, rate limiting, and headers
+- `auth-service` manages registration, login, JWTs, and profiles
+- `product-service` serves products, categories, filtering, and pagination
+- `cart-service` supports guest carts and authenticated carts
+- `order-service` handles order creation and order history
+- `inventory-service` manages inventory tables and stock-related flows
+- `application` (`http://localhost:5050`) is the legacy Flask monolith kept for migration/monitoring work
+- `database` is PostgreSQL 15
+- `redis` is used for rate limiting, token blacklisting, and shared runtime support
 
-### A Modern 3-Tier E-Commerce Application with Real-Time Monitoring
+## Current Highlights
 
-*Built with ❤️ using Flask, PostgreSQL, and Nginx*
+- Guest browsing and guest cart flow work through the gateway
+- Login/register store JWTs and support guest cart merge after auth
+- Checkout, orders, and profile flows are wired to the microservices stack
+- CSRF protection, rate limiting, XSS hardening, and security headers are in place
+- Product and order APIs support pagination
+- Live API smoke tests are available with `pytest`
+- Python services run under `gunicorn` in Docker
 
-[🚀 Quick Start](#-quick-start) • [📊 Monitoring](#-monitoring-dashboard) • [✨ Features](#-features) • [🏗️ Architecture](#-architecture)
+## Project Layout
 
-</div>
-
----
-
-<div align="center">
-
-## 🏗️ Architecture Overview
-
-</div>
-
-<table align="center">
-<tr>
-<td align="center" width="33%">
-<h3>🌐 Presentation Layer</h3>
-<img src="https://img.shields.io/badge/Nginx-Alpine-009639?style=flat-square&logo=nginx" alt="Nginx">
-<br><br>
-<code>Port 80</code>
-<br>
-<span>Static files & reverse proxy</span>
-</td>
-<td align="center" width="2%">
-<h1>→</h1>
-</td>
-<td align="center" width="33%">
-<h3>⚡ Application Layer</h3>
-<img src="https://img.shields.io/badge/Flask-3.1.3-000000?style=flat-square&logo=flask" alt="Flask">
-<br><br>
-<code>Port 5000</code>
-<br>
-<span>REST API & Business Logic</span>
-</td>
-<td align="center" width="2%">
-<h1>→</h1>
-</td>
-<td align="center" width="33%">
-<h3>🗄️ Data Layer</h3>
-<img src="https://img.shields.io/badge/PostgreSQL-15-336791?style=flat-square&logo=postgresql" alt="PostgreSQL">
-<br><br>
-<code>Port 5432</code>
-<br>
-<span>Persistent data storage</span>
-</td>
-</tr>
-</table>
-
----
-
-<div align="center">
-
-## ✨ Features
-
-</div>
-
-<table>
-<tr>
-<td width="50%">
-
-### 🛍️ E-Commerce Features
-- 📦 **50+ Real Products** across 6 categories
-- 🔍 **Product Search & Filtering** by category
-- 🛒 **Shopping Cart** with session persistence
-- 👤 **User Authentication** (Register/Login/Logout)
-- 📋 **Order History** with order tracking
-- 💳 **Checkout Flow** with address forms
-- 🎨 **Modern Responsive UI** with animations
-
-</td>
-<td width="50%">
-
-### 🔒 Security Features
-- 🔐 **Bcrypt Password Hashing** (industry standard)
-- 🌐 **CORS Protection** with Flask-CORS 6.0.2
-- 🛡️ **Secure Headers** via Nginx
-- 📊 **Request Tracing** with unique IDs
-- ⏱️ **Rate Tracking** per endpoint
-- 🔑 **Session Management** with Flask sessions
-
-</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td width="50%">
-
-### 📊 Monitoring Dashboard
-- 📡 **Real-time Request Flow** with timing
-- 🐳 **Container/Pod Information**
-- 📈 **Service Health Status**
-- 🕒 **Request History** (last 100 requests)
-- 📉 **Endpoint Performance Metrics**
-- 🏗️ **Architecture Visualization**
-
-</td>
-<td width="50%">
-
-### 🐳 DevOps Features
-- 🐋 **Docker Compose** for local development
-- 🔄 **Auto Database Seeding** on startup
-- 📦 **Multi-stage Builds** optimization
-- 🏥 **Health Check Endpoints**
-- 📝 **Structured Logging**
-- 🚀 **Production Ready** configuration
-
-</td>
-</tr>
-</table>
-
----
-
-<div align="center">
-
-## 📊 Monitoring Dashboard
-
-</div>
-
-<div align="center">
-
-### 🎯 Access the Dashboard
-
-**→ Open `http://localhost/monitor` after starting the application ←**
-
-</div>
-
-<table>
-<tr>
-<td>
-
-<img src="https://img.shields.io/badge/Endpoint-/monitor-blue?style=flat-square" alt="Monitor Endpoint">
-
-### What You'll See:
-
-| Panel | Description |
-|-------|-------------|
-| **Stats Overview** | Total requests, avg latency, error rate, uptime |
-| **Running Containers** | Container names, images, replicas, health status |
-| **Service Status** | Nginx, Flask, PostgreSQL health & latency |
-| **Request Flow** | Real-time request log with descriptions |
-| **Endpoint Performance** | Per-endpoint latency & error counts |
-
-### Request Descriptions:
-
-Each request shows a human-readable description like:
-- `Fetching product catalog` → `/products`
-- `Adding item to cart` → `/api/cart/add/:id`
-- `User logging in` → `/api/login`
-- `Placing new order` → `/api/orders`
-
-</td>
-</tr>
-</table>
-
-<div align="center">
-
-### 📸 Dashboard Preview
-
-```html
-┌─────────────────────────────────────────────────────────────────────┐
-│  📊 MONITORING DASHBOARD                                            │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
-│  │ Total    │ │ Avg      │ │ Error    │ │ Uptime   │ │ Req/min  │ │
-│  │ Requests │ │ Latency  │ │ Rate     │ │          │ │          │ │
-│  │  1,234   │ │  4.2ms   │ │  0.0%    │ │ 2h 15m   │ │  12.5    │ │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ │
-├─────────────────────────────────────────────────────────────────────┤
-│  📦 RUNNING CONTAINERS                                              │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐       │
-│  │ demo-presentation│ │  5c2e2fa52eb5  │ │ demo-database-1 │       │
-│  │ Nginx Frontend   │ │ Flask Backend   │ │ PostgreSQL DB   │       │
-│  │ ● Running        │ │ ● Running       │ │ ● Running       │       │
-│  └─────────────────┘ └─────────────────┘ └─────────────────┘       │
-├─────────────────────────────────────────────────────────────────────┤
-│  📡 REQUEST FLOW                                                    │
-│  ┌────────┬────────┬─────────────────────┬────────┬──────────┐     │
-│  │ ID     │ Method │ Description         │ Status │ Duration │     │
-│  ├────────┼────────┼─────────────────────┼────────┼──────────┤     │
-│  │ a1b2c3 │ GET    │ Fetching products   │ 200    │ 12.5ms   │     │
-│  │ d4e5f6 │ POST   │ Adding to cart      │ 200    │ 3.2ms    │     │
-│  │ g7h8i9 │ POST   │ User logging in     │ 200    │ 45.1ms   │     │
-│  └────────┴────────┴─────────────────────┴────────┴──────────┘     │
-└─────────────────────────────────────────────────────────────────────┘
+```text
+.
+├── application/          # Legacy Flask monolith
+├── data/                 # Shared and service-specific PostgreSQL init SQL
+├── infrastructure/       # Redis config and related infra assets
+├── k8s/                  # Kubernetes manifests
+├── presentation/         # Nginx frontend and static HTML pages
+├── services/             # Gateway + microservices + shared libraries
+├── tests/                # Live API smoke tests
+├── docker-compose.yml
+├── .env.example
+├── CLAUDE.md             # Improvement tracker
+└── KILO.md               # Daily progress tracker
 ```
 
-</div>
+## Prerequisites
 
----
+- Docker Desktop or Docker Engine with Compose support
+- Git
 
-<div align="center">
+## Environment Setup
 
-## 🚀 Quick Start
-
-</div>
-
-### Prerequisites
-- Docker & Docker Compose installed
-- Git installed
-
-### 1️⃣ Clone & Run
+Copy the sample env file and adjust values if needed:
 
 ```bash
-# Clone the repository
-git clone https://github.com/Narendra-Geddam/ecommerce-website.git
-cd ecommerce-website
-
-# Start all services
-docker-compose up --build
+cp .env.example .env
 ```
 
-### 2️⃣ Access the Application
+Important variables:
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| 🏪 **Store** | http://localhost | Main e-commerce site |
-| 📊 **Monitor** | http://localhost/monitor | Real-time dashboard |
-| 🗄️ **Database** | localhost:5432 | PostgreSQL (internal) |
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_DB`
+- `DATABASE_URL`
+- `JWT_SECRET_KEY`
+- `SECRET_KEY`
+- `REDIS_URL`
 
-### 3️⃣ Stop the Application
+## Running The Stack
+
+Start everything:
 
 ```bash
-docker-compose down -v  # -v removes volumes (resets DB)
+docker compose up -d --build
 ```
 
----
-
-<div align="center">
-
-## 📁 Project Structure
-
-</div>
-
-```
-ecommerce-website/
-├── 📂 application/           # Backend (Flask)
-│   ├── app.py               # Main application with API endpoints
-│   └── requirements.txt     # Python dependencies
-│
-├── 📂 presentation/          # Frontend (Nginx)
-│   ├── index.html           # Product listing page
-│   ├── cart.html            # Shopping cart
-│   ├── checkout.html        # Checkout flow
-│   ├── monitor.html         # 📊 Monitoring dashboard
-│   ├── nginx.conf           # Nginx configuration
-│   └── static/              # Images & static assets
-│
-├── 📂 data/                  # Database
-│   ├── schema.sql           # Database schema
-│   └── seed_products.sql    # 50+ product seeds
-│
-├── 📄 docker-compose.yml    # Docker orchestration
-├── 📄 CLAUDE.md             # Development roadmap
-└── 📄 README.md             # This file
-```
-
----
-
-<div align="center">
-
-## 🔌 API Endpoints
-
-</div>
-
-<table>
-<thead>
-<tr>
-<th>Method</th>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
-<td><code>/products</code></td>
-<td>Get all products (filter by ?category=)</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
-<td><code>/categories</code></td>
-<td>Get all product categories</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/POST-blue?style=flat-square" alt="POST"></td>
-<td><code>/api/register</code></td>
-<td>Register new user</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/POST-blue?style=flat-square" alt="POST"></td>
-<td><code>/api/login</code></td>
-<td>User authentication</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
-<td><code>/api/cart</code></td>
-<td>Get cart items</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/POST-blue?style=flat-square" alt="POST"></td>
-<td><code>/api/cart/add/:id</code></td>
-<td>Add product to cart</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/POST-blue?style=flat-square" alt="POST"></td>
-<td><code>/api/orders</code></td>
-<td>Create new order</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
-<td><code>/api/monitor/requests</code></td>
-<td>📊 Request history</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
-<td><code>/api/monitor/services</code></td>
-<td>📊 Service status</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
-<td><code>/api/monitor/stats</code></td>
-<td>📊 Aggregate statistics</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
-<td><code>/health</code></td>
-<td>💚 Liveness probe (is container running?)</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
-<td><code>/ready</code></td>
-<td>💜 Readiness probe (can container receive traffic?)</td>
-</tr>
-<tr>
-<td><img src="https://img.shields.io/badge/GET-green?style=flat-square" alt="GET"></td>
-<td><code>/live</code></td>
-<td>💗 Simple liveness check</td>
-</tr>
-</tbody>
-</table>
-
----
-
-<div align="center">
-
-## 💚 Health Checks & Probes
-
-</div>
-
-<table>
-<tr>
-<td width="50%">
-
-### 🔍 Docker Health Checks
-
-All services include Docker health checks:
-
-```yaml
-# Nginx (Presentation)
-healthcheck:
-  test: ["CMD", "curl", "-f", "http://localhost/health"]
-  interval: 30s
-  timeout: 10s
-  retries: 3
-  start_period: 10s
-
-# Flask (Application)
-healthcheck:
-  test: ["CMD", "curl", "-f", "http://localhost:5000/ready"]
-  interval: 30s
-  timeout: 10s
-  retries: 3
-  start_period: 20s
-
-# PostgreSQL (Database)
-healthcheck:
-  test: ["CMD-SHELL", "pg_isready -U ecommerce"]
-  interval: 10s
-  timeout: 5s
-  retries: 5
-  start_period: 10s
-```
-
-</td>
-<td width="50%">
-
-### ☸️ Kubernetes Probes
-
-```yaml
-# Liveness Probe - Restart if unhealthy
-livenessProbe:
-  httpGet:
-    path: /live
-    port: 5000
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-
-# Readiness Probe - Route traffic when ready
-readinessProbe:
-  httpGet:
-    path: /ready
-    port: 5000
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  timeoutSeconds: 3
-  failureThreshold: 3
-
-# Startup Probe - For slow starting containers
-startupProbe:
-  httpGet:
-    path: /health
-    port: 5000
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  failureThreshold: 30
-```
-
-</td>
-</tr>
-</table>
-
-<div align="center">
-
-### 🏥 Health Check Endpoints
-
-</div>
-
-| Endpoint | Purpose | Response |
-|----------|---------|----------|
-| `GET /health` | **Liveness** - Is the service running? | `{"status":"healthy","service":"nginx"}` |
-| `GET /ready` | **Readiness** - Can handle traffic + DB connected? | `{"status":"ready","database":"connected"}` |
-| `GET /live` | **Simple Liveness** - Basic alive check | `{"status":"alive","service":"flask"}` |
+Stop everything:
 
 ```bash
-# Test health endpoints
-curl http://localhost/health     # Nginx liveness
-curl http://localhost/ready      # Backend readiness (proxied)
-curl http://localhost/live        # Nginx alive check
-
-# Direct backend health
-curl http://localhost:5000/health
-curl http://localhost:5000/ready
-curl http://localhost:5000/live
+docker compose down
 ```
 
----
-
-<div align="center">
-
-## 🛠️ Technology Stack
-
-</div>
-
-<table align="center">
-<tr>
-<th>Category</th>
-<th>Technology</th>
-<th>Version</th>
-</tr>
-<tr>
-<td>Frontend</td>
-<td>Nginx Alpine</td>
-<td>Latest</td>
-</tr>
-<tr>
-<td>Backend</td>
-<td>Flask</td>
-<td>3.1.3</td>
-</tr>
-<tr>
-<td>Database</td>
-<td>PostgreSQL</td>
-<td>15 Alpine</td>
-</tr>
-<tr>
-<td>Security</td>
-<td>Flask-CORS</td>
-<td>6.0.2</td>
-</tr>
-<tr>
-<td>Security</td>
-<td>Bcrypt</td>
-<td>4.1.2</td>
-</tr>
-<tr>
-<td>WSGI</td>
-<td>Gunicorn</td>
-<td>22.0.0</td>
-</tr>
-<tr>
-<td>Monitoring</td>
-<td>psutil</td>
-<td>5.9.8</td>
-</tr>
-</table>
-
----
-
-<div align="center">
-
-## 📈 Performance & Security
-
-</div>
-
-<table>
-<tr>
-<td width="50%">
-
-### ⚡ Performance Features
-- Connection pooling ready
-- Static file caching via Nginx
-- Optimized database queries
-- Request ID tracing
-- Latency tracking per endpoint
-- Auto-refresh monitoring (5s intervals)
-
-</td>
-<td width="50%">
-
-### 🔒 Security Headers
-```nginx
-X-Request-ID: abc12345
-X-Response-Time: 12.34ms
-```
-- Bcrypt password hashing
-- CORS protection enabled
-- SQL injection prevention
-- XSS protection via template escaping
-
-</td>
-</tr>
-</table>
-
----
-
-<div align="center">
-
-## 🧪 Testing
-
-</div>
+Reset containers and volumes:
 
 ```bash
-# Run the application
-docker-compose up --build
-
-# Test products endpoint
-curl http://localhost/api/products | head
-
-# Test monitoring
-curl http://localhost/api/monitor/services
-
-# View in browser
-open http://localhost
-open http://localhost/monitor
+docker compose down -v
+docker compose up -d --build
 ```
 
----
+## Main URLs
 
-<div align="center">
+- Storefront: `http://localhost/`
+- Cart: `http://localhost/cart.html`
+- Checkout: `http://localhost/checkout.html`
+- Orders: `http://localhost/orders.html`
+- Profile: `http://localhost/profile.html`
+- Admin panel: `http://localhost/admin.html`
+- Wishlist: `http://localhost/wishlist.html`
+- Monitoring dashboard: `http://localhost/monitor`
+- Legacy app: `http://localhost:5050`
 
-## 📝 License
+## Admin Access
 
-</div>
+The admin panel is available at:
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```text
+http://localhost/admin.html
+```
 
----
+How to access it:
 
-<div align="center">
+1. Register or log in with the admin email `admin@shopeasy.local`
+2. Use the normal storefront login page at `http://localhost/login.html`
+3. After login, open `http://localhost/admin.html`
+4. The homepage account menu will also show an `Admin Panel` link for admin users
 
-## 🤝 Contributing
+Notes:
 
-</div>
+- Admin access is determined by the JWT `is_admin` claim
+- The default local admin email is `admin@shopeasy.local`
+- The admin email list is controlled by the `ADMIN_EMAILS` environment variable in Docker/runtime config
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## Admin Features
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+The current admin panel supports:
 
----
+- viewing recent orders
+- updating order status
+- viewing inventory rows
+- viewing low-stock products
+- restocking inventory
+- syncing missing inventory rows from products
+- creating new products
+- editing product details and stock-linked catalog data
+- archiving products without breaking order history
+- viewing users and banning/deactivating accounts
+- creating and deleting homepage banners
+- creating and deleting homepage offer cards
+- creating and deleting coupon codes
 
-<div align="center">
+## Admin Portal Workflows
 
-## 📞 Support
+The admin portal at `http://localhost/admin.html` is now intended to be the store-owner control center, not a customer-style page.
 
-</div>
+Main workflows:
 
-If you have any questions or issues, please [open an issue](https://github.com/Narendra-Geddam/ecommerce-website/issues) on GitHub.
+- `Homepage Banner Studio`
+  - upload a banner image directly from the admin panel
+  - write banner title, subtitle, badge text, colors, sort order, and target link
+  - publish or hide the banner for all storefront users
+  - active banners appear in the public homepage slideshow
+- `Product Catalog`
+  - create products
+  - edit product title, description, category, image path, price, stock, and active status
+  - archive products without deleting order history
+- `Offers and Coupons`
+  - create/edit/delete homepage offer cards from admin
+  - create/edit/delete coupon codes from admin
+  - coupon usage is intended for checkout or manual mention inside banner text
+- `Orders Control`
+  - update order status
+  - cancel eligible orders from admin
+- `Inventory Desk`
+  - restock products
+  - sync missing inventory rows
+  - review low-stock items
+- `Users and Access`
+  - ban/unban users
+  - activate/deactivate users
 
----
+## Homepage Content Rules
 
-<div align="center">
+Current storefront behavior:
 
-**Made with ❤️ by [Narendra Geddam](https://github.com/Narendra-Geddam)**
+- the public homepage hero banner is admin-managed
+- banner images uploaded from admin are served from `presentation/static/uploads/`
+- the old homepage offer-card strip below the hero banner has been removed
+- coupon codes should not be promoted in that removed homepage strip
+- if admins want to announce a festive coupon or promotion on the homepage, they should place it manually inside banner content
+- the actual coupon application flow belongs in checkout
 
-<img src="https://img.shields.io/github/stars/Narendra-Geddam/ecommerce-website?style=social" alt="GitHub stars">
-<img src="https://img.shields.io/github/forks/Narendra-Geddam/ecommerce-website?style=social" alt="GitHub forks">
-<img src="https://img.shields.io/github/watchers/Narendra-Geddam/ecommerce-website?style=social" alt="GitHub watchers">
+This keeps the homepage cleaner and makes banners the main marketing surface for announcements, seasonal offers, and welcome campaigns.
 
-</div>
+## Unified Admin Portal
+
+The control-center style admin UI is available at:
+
+```text
+http://localhost/admin.html
+```
+
+It is designed as a single place to manage the store across these areas:
+
+- dashboard and low-stock watchlist
+- product catalog management
+- user moderation
+- homepage banners and offer cards
+- coupon management
+- order status management
+- inventory operations
+
+Homepage content is now partially CMS-driven:
+
+- `GET /api/homepage/content` returns active banners and offer cards
+- the storefront homepage reads this content and renders live admin-managed sections
+
+Current scope:
+
+- This is a strong MVP control center for the existing ShopEasy architecture
+- It is not yet a full Amazon/Flipkart-scale back office with analytics, seller onboarding, returns workflows, ad bidding, or advanced merchandising rules
+- The next natural expansion would be richer product editing, review moderation, user search/filter tools, dashboard analytics, and media management
+
+The current storefront/admin feature set also includes:
+
+- product reviews and ratings
+- wishlist management
+- coupon validation and discounted checkout
+- user-side order cancellation with stock restoration
+
+## Product And Inventory Management Status
+
+Current status:
+
+- You can already update stock quantities from the admin panel
+- You can restock products and sync inventory records
+- You can manage order statuses
+- You cannot yet create new products, edit product details, upload product images, or delete/archive products from the admin panel
+
+Yes, we can add full product management next.
+
+That next step would typically include:
+
+- create new products
+- edit product name, price, description, category, image, and stock
+- archive or delete products
+- manage inventory from the same admin workflow
+- optionally add coupon management and review moderation to the admin panel
+
+## Main API Endpoints
+
+Full gateway OpenAPI spec:
+
+- `docs/openapi.yaml`
+
+Gateway-backed endpoints:
+
+- `GET /api/me`
+- `POST /api/register`
+- `POST /api/login`
+- `POST /api/logout`
+- `PUT /api/profile`
+- `GET /api/products`
+- `GET /api/categories`
+- `GET /api/cart`
+- `POST /api/cart/add/<id>`
+- `POST /api/cart/remove/<id>`
+- `POST /api/cart/clear`
+- `POST /api/cart/merge`
+- `GET /api/orders`
+- `POST /api/orders`
+- `GET /api/csrf-token`
+- `GET /api/products/<id>/reviews`
+- `POST /api/products/<id>/reviews`
+- `GET /api/wishlist`
+- `POST /api/wishlist/add/<id>`
+- `POST /api/wishlist/remove/<id>`
+- `GET /api/coupons/validate`
+- `POST /api/orders/<id>/cancel`
+- `GET /api/admin/orders`
+- `PUT /api/admin/orders/<id>/status`
+- `GET /api/admin/users`
+- `PUT /api/admin/users/<id>/status`
+- `GET /api/admin/products`
+- `POST /api/admin/products`
+- `PUT /api/admin/products/<id>`
+- `DELETE /api/admin/products/<id>`
+- `GET /api/admin/coupons`
+- `POST /api/admin/coupons`
+- `PUT /api/admin/coupons/<id>`
+- `DELETE /api/admin/coupons/<id>`
+- `GET /api/admin/inventory`
+- `GET /api/admin/inventory/low-stock`
+- `POST /api/admin/inventory/restock`
+- `POST /api/admin/inventory/sync`
+- `GET /api/admin/homepage/banners`
+- `POST /api/admin/homepage/banners`
+- `PUT /api/admin/homepage/banners/<id>`
+- `DELETE /api/admin/homepage/banners/<id>`
+- `GET /api/admin/homepage/offers`
+- `POST /api/admin/homepage/offers`
+- `PUT /api/admin/homepage/offers/<id>`
+- `DELETE /api/admin/homepage/offers/<id>`
+
+Legacy endpoints still exist on the monolith at `http://localhost:5050`, including:
+
+- `GET /products`
+- `GET /categories`
+- `POST /api/register`
+- `POST /api/login`
+
+## Monitoring
+
+The monitoring dashboard is available at:
+
+```text
+http://localhost/monitor
+```
+
+It surfaces:
+
+- recent request history
+- request timing
+- service health
+- container/runtime overview
+
+## Database Notes
+
+- PostgreSQL is the source of truth for users, products, orders, carts, and inventory
+- Init scripts live in `data/`
+- The shared schema in `data/schema.sql` now includes indexes for:
+  - `products.category`
+  - `products.name`
+  - `orders.user_id`
+
+## Testing
+
+A lightweight live API smoke suite is included.
+
+Run it against the active Docker stack with a disposable Python container:
+
+```bash
+docker run --rm --network demo_ecommerce-network -v "${PWD}:/workspace" -w /workspace python:3.11-slim sh -lc "pip install --no-cache-dir -r requirements-test.txt && pytest"
+```
+
+What it currently covers:
+
+- guest auth state
+- product pagination response shape
+- registration validation
+- register + auth flow
+- guest cart round-trip
+
+## Useful Docker Commands
+
+Show service status:
+
+```bash
+docker compose ps
+```
+
+Tail logs:
+
+```bash
+docker compose logs -f gateway
+docker compose logs -f auth-service
+docker compose logs -f order-service
+docker compose logs -f presentation
+```
+
+Rebuild selected services:
+
+```bash
+docker compose up -d --build gateway auth-service order-service presentation
+```
+
+Open a database shell:
+
+```bash
+docker compose exec database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+```
+
+## Migration Status
+
+The repository is in a transition state:
+
+- core storefront traffic uses the gateway and microservices
+- the legacy Flask app is still present for compatibility and monitoring work
+- product and order functionality exist in both legacy and service-oriented forms during migration
+
+See `CLAUDE.md` and `KILO.md` in the repo for the current improvement roadmap and progress notes.

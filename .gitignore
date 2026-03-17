@@ -1,1 +1,9 @@
 .aider*
+.env
+.env.local
+.env.*.local
+.claude/settings.local.json
+__pycache__/
+*.pyc
+presentation/static/uploads/*
+!presentation/static/uploads/.gitkeep

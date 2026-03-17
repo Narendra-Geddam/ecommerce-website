@@ -1,22 +1,84 @@
 version: '3.8'
 
 services:
-  # Presentation Tier - Nginx Frontend
-  presentation:
-    build:
-      context: ./presentation
-      dockerfile: Dockerfile
+  # ============ INFRASTRUCTURE ============
+
+  # Redis for session storage, rate limiting, and token blacklisting
+  redis:
+    image: redis:7-alpine
     ports:
-      - "80:80"
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./infrastructure/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+
+  # ============ DATABASES ============
+
+  # Primary PostgreSQL Database (shared for initial migration)
+  database:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
     environment:
-      - SERVICE_NAME=nginx
-      - SERVICE_TIER=frontend
-      - REPLICAS=1
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - SERVICE_NAME=postgres
+      - SERVICE_TIER=database
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./data/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - ./data/auth-service.sql:/docker-entrypoint-initdb.d/01-auth-service.sql:ro
+      - ./data/product-service.sql:/docker-entrypoint-initdb.d/02-product-service.sql:ro
+      - ./data/cart-service.sql:/docker-entrypoint-initdb.d/03-cart-service.sql:ro
+      - ./data/order-service.sql:/docker-entrypoint-initdb.d/04-order-service.sql:ro
+      - ./data/inventory-service.sql:/docker-entrypoint-initdb.d/05-inventory-service.sql:ro
+      - ./data/06-enhancements.sql:/docker-entrypoint-initdb.d/06-enhancements.sql:ro
+      - ./data/07-admin-portal.sql:/docker-entrypoint-initdb.d/07-admin-portal.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ecommerce-network
+
+  # ============ MICROSERVICES ============
+
+  # API Gateway - Entry point for all requests
+  gateway:
+    build:
+      context: ./services
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - REDIS_URL=${REDIS_URL}
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - PRODUCT_SERVICE_URL=http://product-service:5002
+      - CART_SERVICE_URL=http://cart-service:5003
+      - ORDER_SERVICE_URL=http://order-service:5004
+      - INVENTORY_SERVICE_URL=http://inventory-service:5005
+      - LEGACY_SERVICE_URL=http://application:5000
+      - SERVICE_NAME=gateway
+      - SERVICE_TIER=gateway
     depends_on:
-      application:
+      redis:
+        condition: service_healthy
+      database:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -24,20 +86,146 @@ services:
     networks:
       - ecommerce-network
 
-  # Application Tier - Flask Backend API
+  # Auth Service - Authentication and user management
+  auth-service:
+    build:
+      context: ./services
+      dockerfile: auth-service/Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ACCESS_TOKEN_EXPIPIRES=3600
+      - REFRESH_TOKEN_EXPIPIRES=604800
+      - SERVICE_NAME=auth-service
+      - SERVICE_TIER=backend
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - ecommerce-network
+
+  # Product Service - Products and categories
+  product-service:
+    build:
+      context: ./services
+      dockerfile: product-service/Dockerfile
+    ports:
+      - "5002:5002"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - UPLOAD_DIR=/app/uploads
+      - SERVICE_NAME=product-service
+      - SERVICE_TIER=backend
+    volumes:
+      - ./presentation/static/uploads:/app/uploads
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ecommerce-network
+
+  # Cart Service - Shopping cart management
+  cart-service:
+    build:
+      context: ./services
+      dockerfile: cart-service/Dockerfile
+    ports:
+      - "5003:5003"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_NAME=cart-service
+      - SERVICE_TIER=backend
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ecommerce-network
+
+  # Order Service - Order processing
+  order-service:
+    build:
+      context: ./services
+      dockerfile: order-service/Dockerfile
+    ports:
+      - "5004:5004"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - INVENTORY_SERVICE_URL=http://inventory-service:5005
+      - SERVICE_NAME=order-service
+      - SERVICE_TIER=backend
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ecommerce-network
+
+  # Inventory Service - Stock management
+  inventory-service:
+    build:
+      context: ./services
+      dockerfile: inventory-service/Dockerfile
+    ports:
+      - "5005:5005"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_NAME=inventory-service
+      - SERVICE_TIER=backend
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ecommerce-network
+
+  # ============ LEGACY MONOLITH (Temporary - will be deprecated) ============
+
+  # Application Tier - Flask Backend API (Legacy Monolith)
   application:
     build:
       context: ./application
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "5050:5000"
     environment:
-      - DATABASE_URL=postgresql://ecommerce:password@database:5432/ecommerce
+      - DATABASE_URL=${DATABASE_URL}
       - FLASK_ENV=production
-      - SECRET_KEY=${SECRET_KEY:-your_production_secret_key_here}
+      - SECRET_KEY=${SECRET_KEY}
       - SERVICE_NAME=flask
       - SERVICE_TIER=backend
-      - REPLICAS=1
     depends_on:
       database:
         condition: service_healthy
@@ -50,26 +238,28 @@ services:
     networks:
       - ecommerce-network
 
-  # Data Tier - PostgreSQL Database
-  database:
-    image: postgres:15-alpine
+  # ============ PRESENTATION ============
+
+  # Presentation Tier - Nginx Frontend
+  presentation:
+    build:
+      context: ./presentation
+      dockerfile: Dockerfile
     ports:
-      - "5432:5432"
+      - "80:80"
     environment:
-      - POSTGRES_USER=ecommerce
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=ecommerce
-      - SERVICE_NAME=postgres
-      - SERVICE_TIER=database
-      - REPLICAS=1
+      - SERVICE_NAME=nginx
+      - SERVICE_TIER=frontend
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./data/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - ./presentation/static/uploads:/usr/share/nginx/html/static/uploads
+    depends_on:
+      gateway:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ecommerce -d ecommerce"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
       start_period: 10s
     networks:
       - ecommerce-network
@@ -80,3 +270,4 @@ networks:
 
 volumes:
   postgres-data:
+  redis-data:

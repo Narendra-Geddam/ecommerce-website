@@ -49,6 +49,11 @@ CREATE TABLE IF NOT EXISTS order_items (
     price DECIMAL(10, 2) NOT NULL
 );
 
+-- Indexes for common catalog and order lookups
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+
 -- Insert real products with actual images from demo_data
 INSERT INTO products (name, description, price, image_url, category, stock) VALUES
 ('Redmi 9A (Nature Green, 2GB RAM, 32GB Storage)', '13MP rear camera with AI portrait, AI scene recognition, HDR, pro mode | 5MP front camera. | 16.58 centimeters (6.53 inch) HD+ multi-touch capacitive touchscreen with 1600 x 720 pixels resolution, 268 ppi pixel density and 20:9 aspect ratio', 69.99, '/static/products/redmi9A1.jpg', 'Mobiles', 40),

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details - ShopEasy</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f6fb; color: #223; }
+        header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 18px 24px; position: sticky; top: 0; z-index: 40; }
+        .header-content { max-width: 1240px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .logo { color: white; text-decoration: none; font-size: 1.5rem; font-weight: 800; }
+        nav { display: flex; gap: 10px; flex-wrap: wrap; }
+        nav a { color: white; text-decoration: none; padding: 10px 14px; border-radius: 999px; background: rgba(255,255,255,0.14); }
+        main { max-width: 1240px; margin: 0 auto; padding: 24px; }
+        .breadcrumb { margin-bottom: 18px; color: #66768d; }
+        .breadcrumb a { color: #4b5fd1; text-decoration: none; }
+        .product-layout { display: grid; grid-template-columns: 1.05fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .panel { background: white; border-radius: 22px; box-shadow: 0 14px 35px rgba(0,0,0,0.08); overflow: hidden; }
+        .media-panel { padding: 20px; }
+        .media-panel img { width: 100%; height: 460px; object-fit: cover; border-radius: 18px; background: #eef2f8; }
+        .details-panel { padding: 26px; }
+        .category { display: inline-flex; padding: 8px 12px; border-radius: 999px; background: #eef2ff; color: #4b5fd1; font-weight: 700; margin-bottom: 12px; }
+        h1 { margin: 0 0 12px; font-size: 2.2rem; line-height: 1.2; }
+        .meta { display: flex; gap: 14px; flex-wrap: wrap; color: #5f6d84; margin-bottom: 18px; }
+        .price { font-size: 2rem; font-weight: 800; color: #1f4b99; margin-bottom: 12px; }
+        .stock { font-weight: 700; margin-bottom: 18px; }
+        .stock.ok { color: #1f7a43; }
+        .stock.low { color: #c65d00; }
+        .stock.none { color: #b42318; }
+        .description { color: #445266; line-height: 1.7; margin-bottom: 22px; white-space: pre-wrap; }
+        .subtle { color: #66768d; }
+        .action-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+        .qty { width: 90px; }
+        button, input, textarea { font: inherit; }
+        button, .secondary-link { border: none; border-radius: 12px; padding: 12px 16px; cursor: pointer; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+        .primary-btn { background: #1f4b99; color: white; }
+        .secondary-btn { background: #edf2ff; color: #1f4b99; }
+        input, textarea { width: 100%; padding: 11px 12px; border: 1px solid #d4dceb; border-radius: 12px; background: #fbfcff; }
+        .split { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; }
+        .section { background: white; border-radius: 22px; box-shadow: 0 14px 35px rgba(0,0,0,0.08); padding: 22px; }
+        .section h2 { margin: 0 0 16px; }
+        .review-list { display: grid; gap: 14px; }
+        .review-card { border: 1px solid #e7edf7; border-radius: 16px; padding: 14px; background: #fbfcff; }
+        .review-card strong { display: block; margin-bottom: 6px; }
+        .review-card p { margin: 8px 0 0; color: #506074; line-height: 1.6; }
+        .review-form { display: grid; gap: 12px; }
+        .related-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+        .related-card { background: white; border-radius: 18px; box-shadow: 0 10px 24px rgba(0,0,0,0.08); overflow: hidden; }
+        .related-card img { width: 100%; height: 180px; object-fit: cover; background: #eef2f8; }
+        .related-card .info { padding: 14px; }
+        .related-card a { color: inherit; text-decoration: none; }
+        .toast { position: fixed; right: 20px; bottom: 20px; background: #1f7a43; color: white; padding: 14px 18px; border-radius: 12px; box-shadow: 0 10px 24px rgba(0,0,0,0.2); opacity: 0; transform: translateY(20px); transition: all 0.25s; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.error { background: #b42318; }
+        .loading, .error { text-align: center; padding: 50px; }
+        @media (max-width: 980px) {
+            .product-layout, .split { grid-template-columns: 1fr; }
+            .media-panel img { height: 320px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a class="logo" href="/">ShopEasy</a>
+            <nav id="nav-menu">
+                <a href="/">Home</a>
+                <a href="/cart.html">Cart</a>
+                <a href="/login.html">Login</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main-content">
+        <div class="loading">Loading product...</div>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const API_URL = '/api';
+        const params = new URLSearchParams(window.location.search);
+        const productId = Number(params.get('id'));
+        let product = null;
+        let reviews = [];
+        let relatedProducts = [];
+        let isLoggedIn = false;
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem('access_token');
+            return token ? { Authorization: `Bearer ${token}` } : {};
+        }
+
+        async function getCsrfToken(forceRefresh = false) {
+            if (forceRefresh) {
+                sessionStorage.removeItem('csrf_token');
+            }
+            const cached = sessionStorage.getItem('csrf_token');
+            if (cached) return cached;
+            const response = await fetch(`${API_URL}/csrf-token`, { credentials: 'include' });
+            const data = await response.json();
+            sessionStorage.setItem('csrf_token', data.csrf_token);
+            return data.csrf_token;
+        }
+
+        async function readJsonResponse(response, fallbackMessage) {
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`${fallbackMessage}. Received ${contentType || 'unknown content type'}: ${text.slice(0, 80)}`);
+            }
+            return response.json();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function escapeAttr(value) {
+            return escapeHtml(value).replace(/`/g, '&#96;');
+        }
+
+        function safeImageUrl(value) {
+            const url = String(value ?? '');
+            if (url.startsWith('/static/') || url.startsWith('/images/') || url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image/')) {
+                return escapeAttr(url);
+            }
+            return '';
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast${isError ? ' error' : ''}`;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2400);
+        }
+
+        function stockClass(stock) {
+            if (stock <= 0) return 'none';
+            if (stock < 10) return 'low';
+            return 'ok';
+        }
+
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/me`, { credentials: 'include', headers: getAuthHeaders() });
+                const user = await readJsonResponse(response, 'Failed to load auth state');
+                isLoggedIn = Boolean(user.authenticated);
+                const nav = document.getElementById('nav-menu');
+                if (isLoggedIn) {
+                    nav.innerHTML = `
+                        <a href="/">Home</a>
+                        <a href="/cart.html">Cart</a>
+                        <a href="/orders.html">Orders</a>
+                        <a href="/profile.html">${escapeHtml(user.name || 'Profile')}</a>
+                    `;
+                }
+            } catch (error) {
+                isLoggedIn = false;
+            }
+        }
+
+        async function loadProduct() {
+            if (!productId) {
+                document.getElementById('main-content').innerHTML = '<div class="error">Product not found.</div>';
+                return;
+            }
+
+            try {
+                const [productResponse, reviewResponse] = await Promise.all([
+                    fetch(`${API_URL}/products/${productId}`),
+                    fetch(`${API_URL}/products/${productId}/reviews`)
+                ]);
+                product = await readJsonResponse(productResponse, 'Failed to load product');
+                const reviewData = await readJsonResponse(reviewResponse, 'Failed to load reviews');
+                reviews = reviewData.reviews || [];
+
+                const relatedResponse = await fetch(`${API_URL}/products?category=${encodeURIComponent(product.category)}&page=1&page_size=4`);
+                const relatedData = await readJsonResponse(relatedResponse, 'Failed to load related products');
+                relatedProducts = (relatedData.products || []).filter((item) => item.id !== product.id).slice(0, 4);
+
+                renderProductPage();
+            } catch (error) {
+                document.getElementById('main-content').innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        function renderProductPage() {
+            const stockText = product.stock > 0 ? `${product.stock} available in stock` : 'Out of stock';
+            const main = document.getElementById('main-content');
+            main.innerHTML = `
+                <div class="breadcrumb"><a href="/">Home</a> / <a href="/?category=${encodeURIComponent(product.category)}">${escapeHtml(product.category)}</a> / ${escapeHtml(product.name)}</div>
+                <div class="product-layout">
+                    <div class="panel media-panel">
+                        <img src="${safeImageUrl(product.image_url)}" alt="${escapeAttr(product.name)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22460%22><rect fill=%22%23e6ebf5%22 width=%22600%22 height=%22460%22/><text fill=%22%238392ab%22 x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22>No Image</text></svg>'">
+                    </div>
+                    <div class="panel details-panel">
+                        <span class="category">${escapeHtml(product.category)}</span>
+                        <h1>${escapeHtml(product.name)}</h1>
+                        <div class="meta">
+                            <span>⭐ ${Number(product.avg_rating || 0).toFixed(1)}</span>
+                            <span>${product.review_count || 0} reviews</span>
+                            <span>Product ID: ${product.id}</span>
+                        </div>
+                        <div class="price">$${Number(product.price).toFixed(2)}</div>
+                        <div class="stock ${stockClass(product.stock)}">${escapeHtml(stockText)}</div>
+                        <div class="description">${escapeHtml(product.description || 'No description available.')}</div>
+                        <div class="action-row">
+                            <input id="quantity" class="qty" type="number" min="1" max="${Math.max(product.stock, 1)}" value="1">
+                            <button class="primary-btn" onclick="addToCart()" ${product.stock <= 0 ? 'disabled' : ''}>Add to Cart</button>
+                            <button class="secondary-btn" onclick="addToWishlist()">Wishlist</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="split">
+                    <div class="section">
+                        <h2>Customer Reviews</h2>
+                        <div class="review-list">
+                            ${reviews.length ? reviews.map((review) => `
+                                <div class="review-card">
+                                    <strong>${escapeHtml(review.user_name)} • ${'★'.repeat(Math.max(1, Number(review.rating || 0)))}</strong>
+                                    <span class="subtle">${escapeHtml(new Date(review.created_at).toLocaleDateString())}</span>
+                                    <p>${escapeHtml(review.comment || 'No comment added.')}</p>
+                                </div>
+                            `).join('') : '<p class="subtle">No reviews yet. Be the first to review this product.</p>'}
+                        </div>
+                    </div>
+                    <div class="section">
+                        <h2>Write a Review</h2>
+                        <div class="review-form">
+                            <select id="review-rating">
+                                <option value="5">5 Stars</option>
+                                <option value="4">4 Stars</option>
+                                <option value="3">3 Stars</option>
+                                <option value="2">2 Stars</option>
+                                <option value="1">1 Star</option>
+                            </select>
+                            <textarea id="review-comment" placeholder="Share your experience with this product"></textarea>
+                            <button class="primary-btn" onclick="submitReview()">Submit Review</button>
+                            <p class="subtle">${isLoggedIn ? 'Your review helps other shoppers.' : 'Please login to submit a review.'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="section" style="margin-top:24px;">
+                    <h2>Related Products</h2>
+                    <div class="related-grid">
+                        ${relatedProducts.map((item) => `
+                            <div class="related-card">
+                                <a href="/product.html?id=${item.id}">
+                                    <img src="${safeImageUrl(item.image_url)}" alt="${escapeAttr(item.name)}">
+                                    <div class="info">
+                                        <strong>${escapeHtml(item.name)}</strong>
+                                        <p class="subtle">$${Number(item.price).toFixed(2)} • ⭐ ${Number(item.avg_rating || 0).toFixed(1)}</p>
+                                    </div>
+                                </a>
+                            </div>
+                        `).join('') || '<p class="subtle">No related products available.</p>'}
+                    </div>
+                </div>
+            `;
+            document.title = `${product.name} - ShopEasy`;
+        }
+
+        async function addToCart() {
+            if (!product) return;
+            try {
+                const quantity = Math.max(1, Number(document.getElementById('quantity').value || 1));
+                const headers = {
+                    ...getAuthHeaders(),
+                    'X-CSRF-Token': await getCsrfToken(),
+                    'Content-Type': 'application/json'
+                };
+                const cartId = localStorage.getItem('cart_id');
+                if (cartId) headers['X-Cart-ID'] = cartId;
+
+                const response = await fetch(`${API_URL}/cart/add/${product.id}`, {
+                    method: 'POST',
+                    headers,
+                    credentials: 'include',
+                    body: JSON.stringify({ quantity })
+                });
+                const result = await readJsonResponse(response, 'Failed to add product to cart');
+                if (result.success) {
+                    if (result.cart_id) {
+                        localStorage.setItem('cart_id', result.cart_id);
+                    }
+                    showToast('Added to cart');
+                } else {
+                    showToast(result.error || 'Failed to add to cart', true);
+                }
+            } catch (error) {
+                showToast('Failed to add to cart', true);
+            }
+        }
+
+        async function addToWishlist() {
+            if (!isLoggedIn) {
+                window.location.href = '/login.html';
+                return;
+            }
+            try {
+                const response = await fetch(`${API_URL}/wishlist/add/${product.id}`, {
+                    method: 'POST',
+                    headers: {
+                        ...getAuthHeaders(),
+                        'X-CSRF-Token': await getCsrfToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({})
+                });
+                const result = await readJsonResponse(response, 'Failed to update wishlist');
+                if (result.success) {
+                    showToast('Added to wishlist');
+                } else {
+                    showToast(result.error || 'Failed to update wishlist', true);
+                }
+            } catch (error) {
+                showToast('Failed to update wishlist', true);
+            }
+        }
+
+        async function submitReview() {
+            if (!isLoggedIn) {
+                window.location.href = '/login.html';
+                return;
+            }
+            try {
+                const response = await fetch(`${API_URL}/products/${product.id}/reviews`, {
+                    method: 'POST',
+                    headers: {
+                        ...getAuthHeaders(),
+                        'X-CSRF-Token': await getCsrfToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        rating: Number(document.getElementById('review-rating').value),
+                        comment: document.getElementById('review-comment').value
+                    })
+                });
+                const result = await readJsonResponse(response, 'Failed to save review');
+                if (result.success) {
+                    showToast('Review submitted');
+                    await loadProduct();
+                } else {
+                    showToast(result.error || 'Failed to save review', true);
+                }
+            } catch (error) {
+                showToast('Failed to save review', true);
+            }
+        }
+
+        checkAuth().then(loadProduct);
+    </script>
+</body>
+</html>
