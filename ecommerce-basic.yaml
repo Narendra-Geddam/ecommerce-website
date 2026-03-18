@@ -264,7 +264,7 @@ spec:
     spec:
       containers:
         - name: nginx-container
-          image: usernamenarendra/morecraze-presentation:v2.0.2
+          image: usernamenarendra/morecraze-presentation:v2.1.0
           ports:
             - containerPort: 80
               name: http
@@ -291,7 +291,7 @@ spec:
     spec:
       containers:
         - name: flask-container
-          image: usernamenarendra/morecraze-application:v2.0.0
+          image: usernamenarendra/morecraze-application:v2.1.0
           ports:
             - containerPort: 5000
               name: api-http

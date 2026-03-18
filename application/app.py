@@ -701,5 +701,114 @@ def get_monitor_system():
             'disk': {'total_gb': 0, 'used_gb': 0, 'percent': 0}
         })
 
+@app.route('/api/monitor/ingress')
+def get_monitor_ingress():
+    """Get Ingress configuration and status"""
+    # Simulated Ingress data - in production, this would query the Kubernetes API
+    ingress_data = [
+        {
+            'name': 'ecommerce-alb-ingress',
+            'namespace': 'prod-ecommerce',
+            'controller': 'ALB',
+            'external_ip': 'k8s-prodecom-ecommerc-defe3d07c2-1923831214.eu-north-1.elb.amazonaws.com',
+            'rules': [{'path': '/', 'host': '*'}],
+            'service_name': 'nginx-frontend-service',
+            'service_port': 80,
+            'status': 'Active',
+            'created_at': '2026-03-18T00:00:00Z'
+        }
+    ]
+
+    return jsonify({
+        'ingress': ingress_data,
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/api/monitor/k8s-services')
+def get_monitor_k8s_services():
+    """Get Kubernetes services with associated pods"""
+    # Simulated K8s services and pods - in production, this would query the Kubernetes API
+    services_data = [
+        {
+            'name': 'nginx-frontend-service',
+            'namespace': 'prod-ecommerce',
+            'type': 'ClusterIP',
+            'cluster_ip': '172.20.117.159',
+            'port': 80,
+            'target_port': 80,
+            'pods': [
+                {
+                    'name': 'nginx-frontend-58ddb6cc4b-6zkzm',
+                    'status': 'Running',
+                    'ip': '10.20.13.227',
+                    'ready': True
+                },
+                {
+                    'name': 'nginx-frontend-58ddb6cc4b-krntt',
+                    'status': 'Running',
+                    'ip': '10.20.29.186',
+                    'ready': True
+                },
+                {
+                    'name': 'nginx-frontend-58ddb6cc4b-qbm88',
+                    'status': 'Running',
+                    'ip': '10.20.13.36',
+                    'ready': True
+                }
+            ]
+        },
+        {
+            'name': 'flask-api-service',
+            'namespace': 'prod-ecommerce',
+            'type': 'ClusterIP',
+            'cluster_ip': '172.20.38.200',
+            'port': 5000,
+            'target_port': 5000,
+            'pods': [
+                {
+                    'name': 'flask-api-8fd74b6f5-gpzgh',
+                    'status': 'Running',
+                    'ip': '10.20.14.45',
+                    'ready': True
+                },
+                {
+                    'name': 'flask-api-8fd74b6f5-gw679',
+                    'status': 'Running',
+                    'ip': '10.20.28.92',
+                    'ready': True
+                },
+                {
+                    'name': 'flask-api-8fd74b6f5-ldcbb',
+                    'status': 'Running',
+                    'ip': '10.20.14.78',
+                    'ready': True
+                }
+            ]
+        },
+        {
+            'name': 'postgres-service',
+            'namespace': 'prod-ecommerce',
+            'type': 'ClusterIP',
+            'cluster_ip': '172.20.172.160',
+            'port': 5432,
+            'target_port': 5432,
+            'pods': [
+                {
+                    'name': 'postgres-db-0',
+                    'status': 'Running',
+                    'ip': '10.20.12.88',
+                    'ready': True
+                }
+            ]
+        }
+    ]
+
+    return jsonify({
+        'services': services_data,
+        'total_pods': sum(len(s['pods']) for s in services_data),
+        'namespace': 'prod-ecommerce',
+        'timestamp': datetime.now().isoformat()
+    })
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -468,6 +468,130 @@
             font-size: 0.9rem;
         }
 
+        /* Kubernetes Services Grid */
+        .services-k8s-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .k8s-service-card {
+            background: #0f0f23;
+            border-radius: 10px;
+            padding: 1.5rem;
+            border: 1px solid #2a2a4a;
+        }
+
+        .k8s-service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #2a2a4a;
+        }
+
+        .k8s-service-name {
+            font-weight: 600;
+            color: #667eea;
+            font-family: monospace;
+        }
+
+        .k8s-service-type {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .k8s-service-info {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 0.75rem;
+        }
+
+        .k8s-service-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .k8s-service-info-label {
+            color: #666;
+        }
+
+        .k8s-service-info-value {
+            color: #e0e0e0;
+            font-family: monospace;
+        }
+
+        .pods-list {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #2a2a4a;
+        }
+
+        .pods-list-title {
+            color: #888;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pods-list-title .pod-count {
+            display: inline-block;
+            background: rgba(39, 174, 96, 0.2);
+            color: #27ae60;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .pod-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .pod-item-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #27ae60;
+            animation: pulse 2s infinite;
+        }
+
+        .pod-item-status.error {
+            background: #e74c3c;
+        }
+
+        .pod-item-name {
+            background: #1a1a3e;
+            color: #9b59b6;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .pod-item-ip {
+            color: #666;
+            font-size: 0.8rem;
+            font-family: monospace;
+        }
+
         /* Loading State */
         .loading {
             text-align: center;
@@ -609,6 +733,42 @@
                         <div class="node-port">Port 5432</div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Ingress Configuration -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">🚪 Ingress Configuration</h3>
+                <span class="panel-badge" id="ingress-status">Active</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="endpoints-table">
+                    <thead>
+                        <tr>
+                            <th>Ingress Name</th>
+                            <th>Ingress Controller</th>
+                            <th>External IP</th>
+                            <th>Route Rules</th>
+                            <th>Target Service</th>
+                            <th>Target Port</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ingress-details">
+                        <tr><td colspan="6" class="loading">Loading Ingress...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Kubernetes Services with Pod Names -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">🔗 Kubernetes Services & Pods</h3>
+                <span class="panel-badge" id="services-count">-</span>
+            </div>
+            <div class="services-k8s-grid" id="services-k8s-grid">
+                <div class="loading">Loading Kubernetes services...</div>
             </div>
         </div>
 
@@ -844,6 +1004,90 @@
             }
         }
 
+        // Fetch Ingress configuration
+        async function fetchIngressData() {
+            try {
+                const response = await fetch(`${API_URL}/monitor/ingress`);
+                const data = await response.json();
+                const ingressTable = document.getElementById('ingress-details');
+
+                if (data.ingress && data.ingress.length > 0) {
+                    ingressTable.innerHTML = data.ingress.map(ingress => `
+                        <tr>
+                            <td><strong>${ingress.name}</strong></td>
+                            <td>${ingress.controller || 'ALB'}</td>
+                            <td><code>${ingress.external_ip || 'Pending...'}</code></td>
+                            <td>${ingress.rules.map(r => r.path || '/').join(', ')}</td>
+                            <td>${ingress.service_name || '-'}</td>
+                            <td>${ingress.service_port || '-'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    ingressTable.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;">No Ingress configured</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to fetch Ingress data:', error);
+                document.getElementById('ingress-details').innerHTML = 
+                    '<tr><td colspan="6" style="text-align:center;color:#e74c3c;">Failed to load Ingress</td></tr>';
+            }
+        }
+
+        // Fetch Kubernetes Services with Pods
+        async function fetchK8sServices() {
+            try {
+                const response = await fetch(`${API_URL}/monitor/k8s-services`);
+                const data = await response.json();
+                const servicesGrid = document.getElementById('services-k8s-grid');
+
+                if (data.services && data.services.length > 0) {
+                    servicesGrid.innerHTML = data.services.map(service => `
+                        <div class="k8s-service-card">
+                            <div class="k8s-service-header">
+                                <div class="k8s-service-name">${service.name}</div>
+                                <span class="k8s-service-type">${service.type}</span>
+                            </div>
+                            <div class="k8s-service-info">
+                                <div class="k8s-service-info-row">
+                                    <span class="k8s-service-info-label">Namespace:</span>
+                                    <span class="k8s-service-info-value">${service.namespace}</span>
+                                </div>
+                                <div class="k8s-service-info-row">
+                                    <span class="k8s-service-info-label">IP:</span>
+                                    <span class="k8s-service-info-value">${service.cluster_ip}</span>
+                                </div>
+                                <div class="k8s-service-info-row">
+                                    <span class="k8s-service-info-label">Port:</span>
+                                    <span class="k8s-service-info-value">${service.port}:${service.target_port}</span>
+                                </div>
+                            </div>
+                            ${service.pods && service.pods.length > 0 ? `
+                                <div class="pods-list">
+                                    <div class="pods-list-title">
+                                        📦 Pods 
+                                        <span class="pod-count">${service.pods.length}</span>
+                                    </div>
+                                    ${service.pods.map(pod => `
+                                        <div class="pod-item">
+                                            <div class="pod-item-status ${pod.status === 'Running' ? '' : 'error'}"></div>
+                                            <div class="pod-item-name" title="${pod.name}">${pod.name}</div>
+                                            <div class="pod-item-ip">${pod.ip || 'pending'}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : '<div class="pods-list"><div style="color:#666;font-size:0.85rem;">No pods running</div></div>'}
+                        </div>
+                    `).join('');
+                    document.getElementById('services-count').textContent = `${data.services.length} Services`;
+                } else {
+                    servicesGrid.innerHTML = '<div class="loading">No Kubernetes services available</div>';
+                }
+            } catch (error) {
+                console.error('Failed to fetch K8s services:', error);
+                document.getElementById('services-k8s-grid').innerHTML = 
+                    '<div class="loading">Failed to load Kubernetes services</div>';
+            }
+        }
+
         // Helper functions
         function getStatusClass(status) {
             if (status < 300) return 'success';
@@ -864,7 +1108,13 @@
 
         // Initialize
         async function init() {
-            await Promise.all([fetchStats(), fetchServices(), fetchRequests()]);
+            await Promise.all([
+                fetchStats(), 
+                fetchServices(), 
+                fetchRequests(),
+                fetchIngressData(),
+                fetchK8sServices()
+            ]);
         }
 
         // Start auto-refresh
@@ -874,6 +1124,8 @@
                     fetchStats();
                     fetchServices();
                     fetchRequests();
+                    fetchIngressData();
+                    fetchK8sServices();
                 }
             }, 5000);
         }
