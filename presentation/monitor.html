@@ -592,6 +592,149 @@
             font-family: monospace;
         }
 
+        /* Traffic Flow Diagram */
+        .traffic-flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            padding: 1.5rem 0;
+            align-items: start;
+        }
+
+        .traffic-node {
+            background: linear-gradient(135deg, #1a1a3e 0%, #252550 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 2px solid #667eea;
+            position: relative;
+        }
+
+        .traffic-node.frontend { border-color: #3498db; }
+        .traffic-node.backend { border-color: #667eea; }
+        .traffic-node.database { border-color: #27ae60; }
+
+        .traffic-node-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #2a2a4a;
+        }
+
+        .traffic-node-icon {
+            font-size: 2rem;
+        }
+
+        .traffic-node-title {
+            flex: 1;
+        }
+
+        .traffic-node-name {
+            font-weight: 600;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .traffic-node-service {
+            font-size: 0.75rem;
+            color: #888;
+            font-family: monospace;
+        }
+
+        .traffic-containers {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .traffic-container-item {
+            background: #0f0f23;
+            border-radius: 8px;
+            padding: 0.75rem;
+            border-left: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .traffic-container-item.frontend { border-left-color: #3498db; }
+        .traffic-container-item.backend { border-left-color: #667eea; }
+        .traffic-container-item.database { border-left-color: #27ae60; }
+
+        .container-status-badge {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #27ae60;
+            flex-shrink: 0;
+        }
+
+        .container-status-badge.error {
+            background: #e74c3c;
+        }
+
+        .traffic-container-info {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
+        .traffic-container-name {
+            color: #9b59b6;
+            font-family: monospace;
+            font-weight: 600;
+        }
+
+        .traffic-container-ip {
+            color: #666;
+            font-size: 0.75rem;
+        }
+
+        .traffic-node-stats {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #2a2a4a;
+            font-size: 0.85rem;
+        }
+
+        .traffic-stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .traffic-stat-label {
+            color: #888;
+        }
+
+        .traffic-stat-value {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .flow-arrow-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: #667eea;
+            min-height: 50px;
+        }
+
+        /* Service Overview Grid */
+        .service-overview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 1200px) {
+            .service-overview-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* Loading State */
         .loading {
             text-align: center;
@@ -733,6 +876,17 @@
                         <div class="node-port">Port 5432</div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Traffic Flow with Containers -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">🔀 Traffic Flow & Running Containers</h3>
+                <span class="panel-badge" id="total-containers">7 Containers</span>
+            </div>
+            <div class="service-overview-grid" id="traffic-flow-grid">
+                <div class="loading">Loading traffic flow...</div>
             </div>
         </div>
 
@@ -1038,8 +1192,10 @@
                 const response = await fetch(`${API_URL}/monitor/k8s-services`);
                 const data = await response.json();
                 const servicesGrid = document.getElementById('services-k8s-grid');
+                const trafficFlowGrid = document.getElementById('traffic-flow-grid');
 
                 if (data.services && data.services.length > 0) {
+                    // Update Kubernetes Services panel
                     servicesGrid.innerHTML = data.services.map(service => `
                         <div class="k8s-service-card">
                             <div class="k8s-service-header">
@@ -1077,7 +1233,61 @@
                             ` : '<div class="pods-list"><div style="color:#666;font-size:0.85rem;">No pods running</div></div>'}
                         </div>
                     `).join('');
+                    
                     document.getElementById('services-count').textContent = `${data.services.length} Services`;
+
+                    // Update Traffic Flow panel with containers visualization
+                    const icons = {
+                        'nginx-frontend-service': '🌐',
+                        'flask-api-service': '⚡',
+                        'postgres-service': '🗄️'
+                    };
+
+                    let totalContainers = 0;
+                    trafficFlowGrid.innerHTML = data.services.map(service => {
+                        const podCount = service.pods ? service.pods.length : 0;
+                        totalContainers += podCount;
+                        const icon = icons[service.name] || '📦';
+                        const serviceType = service.name.includes('nginx') ? 'frontend' : 
+                                          service.name.includes('flask') ? 'backend' : 'database';
+
+                        return `
+                            <div class="traffic-node ${serviceType}">
+                                <div class="traffic-node-header">
+                                    <div class="traffic-node-icon">${icon}</div>
+                                    <div class="traffic-node-title">
+                                        <div class="traffic-node-name">${service.name.replace('-', ' ').toUpperCase()}</div>
+                                        <div class="traffic-node-service">${service.cluster_ip}:${service.port}</div>
+                                    </div>
+                                </div>
+                                <div class="traffic-containers">
+                                    ${service.pods && service.pods.length > 0 ? `
+                                        ${service.pods.map(pod => `
+                                            <div class="traffic-container-item ${serviceType}">
+                                                <div class="container-status-badge ${pod.status === 'Running' ? '' : 'error'}"></div>
+                                                <div class="traffic-container-info">
+                                                    <div class="traffic-container-name">${pod.name}</div>
+                                                    <div class="traffic-container-ip">🖥️ ${pod.ip || 'pending'}</div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    ` : `<div style="color:#888;font-size:0.85rem;padding:0.5rem;">No containers running</div>`}
+                                </div>
+                                <div class="traffic-node-stats">
+                                    <div class="traffic-stat-row">
+                                        <span class="traffic-stat-label">Replicas:</span>
+                                        <span class="traffic-stat-value">${podCount}/${podCount}</span>
+                                    </div>
+                                    <div class="traffic-stat-row">
+                                        <span class="traffic-stat-label">Port:</span>
+                                        <span class="traffic-stat-value">${service.target_port}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    document.getElementById('total-containers').textContent = `${totalContainers} Running Containers`;
                 } else {
                     servicesGrid.innerHTML = '<div class="loading">No Kubernetes services available</div>';
                 }

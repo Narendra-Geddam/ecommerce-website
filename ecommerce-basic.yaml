@@ -264,7 +264,7 @@ spec:
     spec:
       containers:
         - name: nginx-container
-          image: usernamenarendra/morecraze-presentation:v2.1.0
+          image: usernamenarendra/morecraze-presentation:v2.2.0
           ports:
             - containerPort: 80
               name: http
