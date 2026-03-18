@@ -1,0 +1,142 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecommerce-app
+  namespace: argocd
+spec:
+  # Project Name
+  project: default
+  
+  # Source - Where to pull from (GitHub repository with Helm chart)
+  source:
+    repoURL: https://github.com/your-username/your-repo.git
+    targetRevision: main  # Branch to track
+    path: helm-chart      # Path to Helm chart in repository
+    
+    # Helm-specific values
+    helm:
+      releaseName: ecommerce-app
+      
+      # Use values from values.yaml in the repository
+      # ArgoCD will automatically use: helm-chart/values.yaml
+      valueFiles:
+        - values.yaml
+      
+      # Optional: Override specific parameters
+      parameters: []
+      
+      # Skip Helm dependency update (we manage deps in values.yaml)
+      skipCrds: false
+  
+  # Destination - Where to deploy
+  destination:
+    server: https://kubernetes.default.svc  # Current cluster
+    namespace: default                        # Namespace for deployment
+  
+  # Sync Policy - How ArgoCD syncs the application
+  syncPolicy:
+    # Automatic sync when Git changes are detected
+    automated:
+      prune: true      # Delete resources not in Git
+      selfHeal: true   # Reconcile if cluster drifts from Git
+      allow:
+        empty: false   # Prevent deletion of all resources
+    
+    # Sync options
+    syncOptions:
+      - CreateNamespace=true  # Create namespace if doesn't exist
+      - PrunePropagationPolicy=foreground
+      - RespectIgnoreDifferences=true
+    
+    # Retry policy for failed syncs
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  # Notification/Health Assessment
+  info:
+    - name: Documentation
+      value: https://github.com/your-username/your-repo/wiki
+    - name: Slack Channel
+      value: '#devops'
+
+---
+# Optional: NetworkPolicy to restrict app communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ecommerce-app-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      helm.sh/chart: ecommerce-app
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: default
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: default
+    - to:
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+
+---
+# Optional: ResourceQuota to prevent resource exhaustion
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ecommerce-app-quota
+  namespace: default
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "8"
+    limits.memory: "16Gi"
+    pods: "20"
+    services: "5"
+
+---
+# Optional: LimitRange for pod constraints
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ecommerce-app-limits
+  namespace: default
+spec:
+  limits:
+    - type: Container
+      max:
+        cpu: "2"
+        memory: "2Gi"
+      min:
+        cpu: "50m"
+        memory: "64Mi"
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "250m"
+        memory: "256Mi"
+    - type: Pod
+      max:
+        cpu: "4"
+        memory: "4Gi"
+      min:
+        cpu: "100m"
+        memory: "128Mi"

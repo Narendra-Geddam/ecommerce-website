@@ -1,24 +1,80 @@
-replicaCount: 3
+# Default replica count for deployments
+replicaCount: 1
 
-image:
-  repository: ecommerce-app
-  pullPolicy: IfNotPresent
-  tag: "latest"
+# Presentation Tier (Nginx Frontend)
+presentation:
+  replicaCount: 1
+  image:
+    repository: your-docker-repo/ecommerce-presentation
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 80
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  healthcheck:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 10
 
-service:
-  type: LoadBalancer
-  port: 80
+# Application Tier (Flask Backend)
+application:
+  replicaCount: 1
+  image:
+    repository: your-docker-repo/ecommerce-application
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 5000
+    targetPort: 5000
+  resources:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+    requests:
+      cpu: 150m
+      memory: 256Mi
+  healthcheck:
+    enabled: true
+    path: /ready
+    initialDelaySeconds: 20
+    periodSeconds: 30
+    timeoutSeconds: 10
+  env:
+    - name: FLASK_ENV
+      value: "production"
+    - name: DATABASE_URL
+      valueFrom:
+        secretKeyRef:
+          name: ecommerce-secrets
+          key: database-url
+    - name: SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: ecommerce-secrets
+          key: secret-key
 
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 50m
-    memory: 64Mi
+# Image pull secrets (if using private Docker registry)
+imagePullSecrets: []
 
+# Node selector for pod scheduling
 nodeSelector: {}
 
+# Tolerations for node taints
 tolerations: []
 
+# Pod affinity/anti-affinity
 affinity: {}
+
+# Environment
+environment: development
