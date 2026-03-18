@@ -1,0 +1,137 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecommerce-alb-ingress
+  namespace: ecommerce
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/load-balancer-name: ecommerce-alb
+    alb.ingress.kubernetes.io/tags: "Environment=development,Project=ecommerce,ManagedBy=ArgoCD"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERTIFICATE_ID"  # Update with your ACM cert
+    alb.ingress.kubernetes.io/listen-ports: "[80,443]"
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS-1-2-2017-01"
+    # Security headers
+    alb.ingress.kubernetes.io/actions.ssl-redirect: |
+      {
+        "Type": "redirect",
+        "RedirectConfig": {
+          "Protocol": "HTTPS",
+          "Port": "443",
+          "StatusCode": "HTTP_301"
+        }
+      }
+    # CORS configuration
+    alb.ingress.kubernetes.io/actions.cors: |
+      {
+        "Type": "forward",
+        "ForwardConfig": {
+          "TargetGroups": [
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:ACCOUNT_ID:targetgroup/ecommerce/abcd1234",
+              "Weight": 100
+            }
+          ]
+        }
+      }
+    # Load balancer attributes
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      access_logs.s3.enabled=false,
+      idle_timeout.connection.termination.on_deregistration.enabled=true,
+      idle_timeout.connection.termination.on_deregistration.timeout_seconds=300,
+      idle_timeout.tcp.established_connection.termination_enabled=true,
+      idle_timeout.tcp.established_connection.termination_timeout_seconds=86400,
+      routing.http.desync_mitigation_mode=defensive,
+      routing.http.drop_invalid_header_fields.enabled=true,
+      http2.enabled=true,
+      http.xff_client_port.enabled=true
+  labels:
+    app: ecommerce
+spec:
+  ingressClassName: alb
+  rules:
+    - host: ""
+      http:
+        paths:
+          # Health check endpoint
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: application
+                port:
+                  number: 8000
+          
+          # API endpoints
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: application
+                port:
+                  number: 8000
+          
+          # Static assets and frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: presentation
+                port:
+                  number: 80
+          
+          # Admin endpoints
+          - path: /admin
+            pathType: Prefix
+            backend:
+              service:
+                name: application
+                port:
+                  number: 8000
+  
+  # TLS configuration (for HTTPS)
+  tls:
+    - hosts:
+        - ecommerce.example.com  # Update with your domain
+        - "*.ecommerce.example.com"
+      secretName: ecommerce-tls-cert
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecommerce-tls-cert
+  namespace: ecommerce
+type: kubernetes.io/tls
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM4akNDQWRvQ0NRRGJo...  # Base64 encoded certificate
+  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURB...  # Base64 encoded private key
+
+---
+# Optional: Service for ALB (if you want to use LoadBalancer service instead of Ingress)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecommerce-alb-nlb
+  namespace: ecommerce
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+  labels:
+    app: ecommerce
+spec:
+  type: LoadBalancer
+  selector:
+    app: presentation
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: 443
+      protocol: TCP
