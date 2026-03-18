@@ -945,26 +945,88 @@
         <div class="panel">
             <div class="panel-header">
                 <h3 class="panel-title">🏗️ Architecture Overview</h3>
-                <span class="panel-badge">3-Tier Application</span>
+                <span class="panel-badge">Kubernetes EKS - AWS</span>
             </div>
             <div class="architecture">
-                <div class="arch-flow">
-                    <div class="arch-node frontend">
-                        <div class="node-icon">🌐</div>
-                        <div class="node-name">Nginx</div>
-                        <div class="node-port">Port 80</div>
+                <!-- Detailed architecture flow -->
+                <div style="overflow-x: auto; padding: 1rem;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; min-width: 1200px; flex-wrap: wrap;">
+                        <!-- User/Internet -->
+                        <div class="arch-node" style="border-color: #e74c3c; background: rgba(231, 76, 60, 0.1); width: 90px;">
+                            <div class="node-icon">👤</div>
+                            <div class="node-name">User</div>
+                            <div class="node-port">Internet</div>
+                        </div>
+                        <span class="arch-arrow">→</span>
+
+                        <!-- ALB -->
+                        <div class="arch-node" style="border-color: #e74c3c; background: rgba(231, 76, 60, 0.1); width: 100px;">
+                            <div class="node-icon">🔓</div>
+                            <div class="node-name">ALB</div>
+                            <div class="node-port">aws.com</div>
+                        </div>
+                        <span class="arch-arrow">→</span>
+
+                        <!-- Ingress -->
+                        <div class="arch-node" style="border-color: #f39c12; background: rgba(243, 156, 18, 0.1); width: 100px;">
+                            <div class="node-icon">🚪</div>
+                            <div class="node-name">Ingress</div>
+                            <div class="node-port">Controller</div>
+                        </div>
+                        <span class="arch-arrow">→</span>
+
+                        <!-- Frontend Service -->
+                        <div class="arch-node" style="border-color: #3498db; background: rgba(52, 152, 219, 0.1); width: 110px;">
+                            <div class="node-icon">🌐</div>
+                            <div class="node-name">Frontend</div>
+                            <div class="node-port">Service:80</div>
+                        </div>
+                        <div style="text-align: center; font-size: 0.8rem; color: #888; margin-top: -10px; width: 100%;">↓ Nginx Pods (3)</div>
+                        <span class="arch-arrow">→</span>
+
+                        <!-- Backend Service -->
+                        <div class="arch-node" style="border-color: #667eea; background: rgba(102, 126, 234, 0.1); width: 110px;">
+                            <div class="node-icon">⚡</div>
+                            <div class="node-name">Backend</div>
+                            <div class="node-port">Service:5000</div>
+                        </div>
+                        <div style="text-align: center; font-size: 0.8rem; color: #888; margin-top: -10px; width: 100%;">↓ Flask APIs (3)</div>
+                        <span class="arch-arrow">→</span>
+
+                        <!-- Database Service -->
+                        <div class="arch-node" style="border-color: #27ae60; background: rgba(39, 174, 96, 0.1); width: 110px;">
+                            <div class="node-icon">🗄️</div>
+                            <div class="node-name">Database</div>
+                            <div class="node-port">Service:5432</div>
+                        </div>
+                        <div style="text-align: center; font-size: 0.8rem; color: #888; margin-top: -10px; width: 100%;">↓ PostgreSQL (1)</div>
                     </div>
-                    <span class="arch-arrow">→</span>
-                    <div class="arch-node backend">
-                        <div class="node-icon">⚡</div>
-                        <div class="node-name">Flask API</div>
-                        <div class="node-port">Port 5000</div>
+                </div>
+
+                <!-- Legend -->
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #2a2a4a; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; font-size: 0.85rem;">
+                    <div>
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #e74c3c; border-radius: 2px; margin-right: 6px;"></span>
+                        <span style="color: #888;">AWS Layer</span>
                     </div>
-                    <span class="arch-arrow">→</span>
-                    <div class="arch-node database">
-                        <div class="node-icon">🗄️</div>
-                        <div class="node-name">PostgreSQL</div>
-                        <div class="node-port">Port 5432</div>
+                    <div>
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #f39c12; border-radius: 2px; margin-right: 6px;"></span>
+                        <span style="color: #888;">Kubernetes Ingress</span>
+                    </div>
+                    <div>
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #3498db; border-radius: 2px; margin-right: 6px;"></span>
+                        <span style="color: #888;">Frontend Service</span>
+                    </div>
+                    <div>
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #667eea; border-radius: 2px; margin-right: 6px;"></span>
+                        <span style="color: #888;">Backend Service</span>
+                    </div>
+                    <div>
+                        <span style="display: inline-block; width: 12px; height: 12px; background: #27ae60; border-radius: 2px; margin-right: 6px;"></span>
+                        <span style="color: #888;">Database Service</span>
+                    </div>
+                    <div>
+                        <span style="color: #888;">Namespace: <strong>prod-ecommerce</strong></span>
                     </div>
                 </div>
             </div>
