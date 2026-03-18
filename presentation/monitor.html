@@ -448,6 +448,97 @@
             color: #667eea;
         }
 
+        /* Detailed Architecture Flow */
+        .detailed-arch-flow {
+            display: flex;
+            align-items: stretch;
+            justify-content: space-between;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+
+        .arch-layer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .arch-stage-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .arch-component {
+            background: #0f0f23;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            text-align: center;
+            font-size: 0.85rem;
+            min-width: 100px;
+            position: relative;
+        }
+
+        .arch-component.alb { 
+            border-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+        }
+
+        .arch-component.ingress { 
+            border-color: #f39c12;
+            background: rgba(243, 156, 18, 0.1);
+        }
+
+        .arch-component.service { 
+            border-color: #3498db;
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .arch-component.pod { 
+            border-color: #27ae60;
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        .arch-component-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .arch-component-name {
+            font-weight: 600;
+            color: #e0e0e0;
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .arch-component-detail {
+            font-size: 0.7rem;
+            color: #888;
+            font-family: monospace;
+        }
+
+        .arch-vertical-arrow {
+            font-size: 1rem;
+            color: #667eea;
+            margin: 0.25rem 0;
+        }
+
+        .arch-horizontal-arrow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #667eea;
+            min-width: 30px;
+        }
+
         /* Endpoints Table */
         .endpoints-table {
             width: 100%;
@@ -1071,51 +1162,9 @@
             try {
                 const response = await fetch(`${API_URL}/monitor/k8s-services`);
                 const data = await response.json();
-                const servicesGrid = document.getElementById('services-k8s-grid');
                 const trafficFlowGrid = document.getElementById('traffic-flow-grid');
 
-                if (data.services && data.services.length > 0) {
-                    // Update Kubernetes Services panel
-                    servicesGrid.innerHTML = data.services.map(service => `
-                        <div class="k8s-service-card">
-                            <div class="k8s-service-header">
-                                <div class="k8s-service-name">${service.name}</div>
-                                <span class="k8s-service-type">${service.type}</span>
-                            </div>
-                            <div class="k8s-service-info">
-                                <div class="k8s-service-info-row">
-                                    <span class="k8s-service-info-label">Namespace:</span>
-                                    <span class="k8s-service-info-value">${service.namespace}</span>
-                                </div>
-                                <div class="k8s-service-info-row">
-                                    <span class="k8s-service-info-label">IP:</span>
-                                    <span class="k8s-service-info-value">${service.cluster_ip}</span>
-                                </div>
-                                <div class="k8s-service-info-row">
-                                    <span class="k8s-service-info-label">Port:</span>
-                                    <span class="k8s-service-info-value">${service.port}:${service.target_port}</span>
-                                </div>
-                            </div>
-                            ${service.pods && service.pods.length > 0 ? `
-                                <div class="pods-list">
-                                    <div class="pods-list-title">
-                                        📦 Pods 
-                                        <span class="pod-count">${service.pods.length}</span>
-                                    </div>
-                                    ${service.pods.map(pod => `
-                                        <div class="pod-item">
-                                            <div class="pod-item-status ${pod.status === 'Running' ? '' : 'error'}"></div>
-                                            <div class="pod-item-name" title="${pod.name}">${pod.name}</div>
-                                            <div class="pod-item-ip">${pod.ip || 'pending'}</div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : '<div class="pods-list"><div style="color:#666;font-size:0.85rem;">No pods running</div></div>'}
-                        </div>
-                    `).join('');
-                    
-                    document.getElementById('services-count').textContent = `${data.services.length} Services`;
-
+                if (data.services && data.services.length > 0 && trafficFlowGrid) {
                     // Update Traffic Flow panel with containers visualization
                     const icons = {
                         'nginx-frontend-service': '🌐',
@@ -1168,13 +1217,16 @@
                     }).join('');
 
                     document.getElementById('total-containers').textContent = `${totalContainers} Running Containers`;
-                } else {
-                    servicesGrid.innerHTML = '<div class="loading">No Kubernetes services available</div>';
+                } else if (trafficFlowGrid) {
+                    trafficFlowGrid.innerHTML = '<div class="loading">No Kubernetes services available</div>';
                 }
             } catch (error) {
                 console.error('Failed to fetch K8s services:', error);
-                document.getElementById('services-k8s-grid').innerHTML = 
-                    '<div class="loading">Failed to load Kubernetes services</div>';
+                const trafficFlowGrid = document.getElementById('traffic-flow-grid');
+                if (trafficFlowGrid) {
+                    trafficFlowGrid.innerHTML = 
+                        '<div class="loading">Failed to load traffic flow data</div>';
+                }
             }
         }
 
