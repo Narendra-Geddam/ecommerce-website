@@ -915,41 +915,7 @@
             </div>
         </div>
 
-        <!-- Kubernetes Services with Pod Names -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title">🔗 Kubernetes Services & Pods</h3>
-                <span class="panel-badge" id="services-count">-</span>
-            </div>
-            <div class="services-k8s-grid" id="services-k8s-grid">
-                <div class="loading">Loading Kubernetes services...</div>
-            </div>
-        </div>
 
-        <!-- Services Status -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title">🔍 Service Status</h3>
-                <div class="refresh-indicator" id="refresh-status">
-                    <div class="spinner"></div>
-                    <span>Auto-refresh: 5s</span>
-                </div>
-            </div>
-            <div class="services-grid" id="services-grid">
-                <div class="loading">Loading services...</div>
-            </div>
-        </div>
-
-        <!-- Pods/Containers Panel -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title">📦 Running Containers / Pods</h3>
-                <span class="panel-badge" id="container-count">3 containers</span>
-            </div>
-            <div class="pods-grid" id="pods-grid">
-                <div class="loading">Loading containers...</div>
-            </div>
-        </div>
 
         <!-- Recent Requests -->
         <div class="panel">
@@ -1041,93 +1007,7 @@
             }
         }
 
-        // Fetch and display services
-        async function fetchServices() {
-            try {
-                const response = await fetch(`${API_URL}/monitor/services`);
-                const data = await response.json();
 
-                const servicesGrid = document.getElementById('services-grid');
-                const icons = {
-                    'Nginx': '🌐',
-                    'Flask': '⚡',
-                    'PostgreSQL': '🗄️'
-                };
-
-                servicesGrid.innerHTML = data.services.map(service => `
-                    <div class="service-card">
-                        <div class="service-header">
-                            <div class="service-name">
-                                <span class="service-icon">${icons[service.name] || '📦'}</span>
-                                <span>${service.name}</span>
-                            </div>
-                            <span class="service-status ${service.status}">
-                                ${service.status === 'healthy' ? '✓' : '✕'} ${service.status}
-                            </span>
-                        </div>
-                        <div class="service-details">
-                            <p>Type: ${service.type}</p>
-                            <p>Port: ${service.port}</p>
-                            <p>Latency: <span class="service-latency">${service.latency_ms}ms</span></p>
-                        </div>
-                    </div>
-                `).join('');
-
-                // Update Pods/Containers panel
-                const podsGrid = document.getElementById('pods-grid');
-                const containerInfo = data.container_info || {};
-
-                podsGrid.innerHTML = data.services.map(service => {
-                    const container = service.container || {};
-                    const isHealthy = service.status === 'healthy';
-                    return `
-                        <div class="pod-card">
-                            <div class="pod-header">
-                                <span class="pod-name-large">${container.name || 'unknown'}</span>
-                                <div class="pod-status">
-                                    <div class="pod-status-dot ${isHealthy ? '' : 'unhealthy'}"></div>
-                                    <span>${isHealthy ? 'Running' : 'Error'}</span>
-                                </div>
-                            </div>
-                            <div class="pod-meta">
-                                <div class="pod-meta-item">
-                                    <span class="label">Service</span>
-                                    <span class="value">${service.name}</span>
-                                </div>
-                                <div class="pod-meta-item">
-                                    <span class="label">Tier</span>
-                                    <span class="value">${container.tier || service.type}</span>
-                                </div>
-                                <div class="pod-meta-item">
-                                    <span class="label">Image</span>
-                                    <span class="value">${container.image || '-'}</span>
-                                </div>
-                                <div class="pod-meta-item">
-                                    <span class="label">Port</span>
-                                    <span class="value">${service.port}</span>
-                                </div>
-                                <div class="pod-meta-item">
-                                    <span class="label">Replicas</span>
-                                    <span class="replicas-badge">${container.replicas || 1}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                document.getElementById('container-count').textContent = `${data.services.length} containers`;
-
-                // Update active connections stat
-                document.getElementById('active-conn').textContent = data.services.filter(s => s.status === 'healthy').length;
-
-            } catch (error) {
-                console.error('Failed to fetch services:', error);
-                document.getElementById('services-grid').innerHTML =
-                    '<div class="error">Failed to load services. Backend may be down.</div>';
-                document.getElementById('pods-grid').innerHTML =
-                    '<div class="error">Failed to load container info.</div>';
-            }
-        }
 
         // Fetch and display requests
         async function fetchRequests() {
@@ -1320,7 +1200,6 @@
         async function init() {
             await Promise.all([
                 fetchStats(), 
-                fetchServices(), 
                 fetchRequests(),
                 fetchIngressData(),
                 fetchK8sServices()
@@ -1332,7 +1211,6 @@
             refreshInterval = setInterval(() => {
                 if (autoRefresh) {
                     fetchStats();
-                    fetchServices();
                     fetchRequests();
                     fetchIngressData();
                     fetchK8sServices();
