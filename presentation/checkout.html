@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - ShopEasy</title>
+    <title>Checkout - morecraze</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
     <style>
         * {
@@ -260,7 +260,7 @@
         <div class="header-content">
             <a href="/" class="logo">
                 <span class="logo-icon">🛒</span>
-                <span>ShopEasy</span>
+                <span>morecraze</span>
             </a>
             <nav>
                 <a href="/">Home</a>
@@ -439,7 +439,7 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`Order placed successfully! Order ID: #${result.order_id}\n\nThank you for shopping with ShopEasy!`);
+                    alert(`Order placed successfully! Order ID: #${result.order_id}\n\nThank you for shopping with morecraze!`);
                     window.location.href = '/orders.html';
                 } else {
                     alert(result.error || 'Failed to place order');
@@ -455,7 +455,7 @@
 
     <footer>
         <div class="footer-bottom">
-            <p>&copy; 2024 ShopEasy. All rights reserved.</p>
+            <p>&copy; 2024 morecraze. All rights reserved.</p>
             <p>💳 Visa | Mastercard | PayPal | 💵 COD</p>
         </div>
     </footer>
