@@ -1,59 +1,53 @@
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres
-  namespace: ecommerce
+  name: postgres-service
+  namespace: prod-ecommerce
   labels:
-    app: postgres
+    app: postgres-db
+    tier: database
 spec:
   type: ClusterIP
   ports:
     - port: 5432
       targetPort: 5432
-      protocol: TCP
-      name: postgres
+      name: postgresql
   selector:
-    app: postgres
-  sessionAffinity: ClientIP
+    app: postgres-db
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: application
-  namespace: ecommerce
+  name: flask-api-service
+  namespace: prod-ecommerce
   labels:
-    app: application
+    app: flask-api
+    tier: backend
 spec:
   type: ClusterIP
   ports:
-    - port: 8000
-      targetPort: 8000
-      protocol: TCP
-      name: http
+    - port: 5000
+      targetPort: 5000
+      name: api-http
   selector:
-    app: application
+    app: flask-api
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: presentation
-  namespace: ecommerce
+  name: nginx-frontend-service
+  namespace: prod-ecommerce
   labels:
-    app: presentation
-  annotations:
-    alb.ingress.kubernetes.io/backend-protocol: "HTTP"
+    app: nginx-frontend
+    tier: presentation
 spec:
   type: ClusterIP
   ports:
     - port: 80
       targetPort: 80
-      protocol: TCP
       name: http
-    - port: 443
-      targetPort: 443
-      protocol: TCP
-      name: https
   selector:
-    app: presentation
+    app: nginx-frontend

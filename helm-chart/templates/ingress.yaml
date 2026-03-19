@@ -1,0 +1,53 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ecommerce-app.fullname" . }}-ingress
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+  annotations:
+    alb.ingress.kubernetes.io/scheme: {{ .Values.ingress.annotations["alb.ingress.kubernetes.io/scheme"] | quote }}
+    alb.ingress.kubernetes.io/target-type: {{ .Values.ingress.annotations["alb.ingress.kubernetes.io/target-type"] | quote }}
+    alb.ingress.kubernetes.io/listen-ports: {{ .Values.ingress.annotations["alb.ingress.kubernetes.io/listen-ports"] | quote }}
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.domain.certificateArn | quote }}
+    alb.ingress.kubernetes.io/ssl-redirect: {{ .Values.ingress.annotations["alb.ingress.kubernetes.io/ssl-redirect"] | quote }}
+    {{- with .Values.ingress.annotations }}
+    {{- if .customAnnotations }}
+    {{- toYaml .customAnnotations | nindent 4 }}
+    {{- end }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.rules }}
+    - {{- if .host }}
+      host: {{ .host | quote }}
+      {{- end }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if .pathType }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              service:
+                name: {{ .serviceName }}
+                port:
+                  number: {{ .servicePort }}
+          {{- end }}
+    {{- end }}
+{{- end }}

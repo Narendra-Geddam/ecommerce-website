@@ -1,0 +1,35 @@
+# Terraform Configuration Files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+*.code-workspace
+
+# OS
+Thumbs.db
+
+# Terraform Cloud
+.terraformrc
+terraform.rc
+
+# Local development
+.env
+.env.local
+*.pem
+*.key
+*.pub
+
+# Logs
+*.log

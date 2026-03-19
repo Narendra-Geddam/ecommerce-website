@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::593067253640:oidc-provider/oidc.eks.eu-north-1.amazonaws.com/id/D9F3585A3CEB7F58435405A9E7833268"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.eks.eu-north-1.amazonaws.com/id/D9F3585A3CEB7F58435405A9E7833268:sub": "system:serviceaccount:prod-ecommerce:ecommerce-sa"
+        }
+      }
+    }
+  ]
+}

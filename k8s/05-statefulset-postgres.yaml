@@ -1,0 +1,46 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-db
+  namespace: prod-ecommerce
+  labels:
+    app: postgres-db
+    tier: database
+spec:
+  serviceName: postgres-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-db
+  template:
+    metadata:
+      labels:
+        app: postgres-db
+        tier: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "ecommerce"
+            - name: POSTGRES_USER
+              value: "ecommerce"
+            - name: POSTGRES_PASSWORD
+              value: "password"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+            - name: db-init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      volumes:
+        - name: postgres-storage
+          emptyDir: {}
+        - name: db-init
+          configMap:
+            name: db-init-script

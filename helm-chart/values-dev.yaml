@@ -1,0 +1,48 @@
+# Helm Chart Configuration - Development Environment
+# Use for local testing and development
+
+environment: development
+
+namespace:
+  create: true
+  name: dev-ecommerce
+
+# Database
+database:
+  replicas: 1
+  storage: 10Gi
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Application tier
+application:
+  flask:
+    replicas: 1
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  
+  nginx:
+    replicas: 1
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+# Ingress
+ingress:
+  enabled: false
+
+# Reduced replica count and resources for dev

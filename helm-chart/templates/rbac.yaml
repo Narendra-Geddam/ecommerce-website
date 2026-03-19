@@ -1,0 +1,75 @@
+{{- if .Values.rbac.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "ecommerce-app.serviceAccountName" . }}
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+  {{- if .Values.rbac.irsaRoleArn }}
+  annotations:
+    eks.amazonaws.com/role-arn: {{ .Values.rbac.irsaRoleArn | quote }}
+  {{- end }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "ecommerce-app.fullname" . }}-role
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "ecommerce-app.fullname" . }}-rolebinding
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "ecommerce-app.fullname" . }}-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "ecommerce-app.serviceAccountName" . }}
+    namespace: {{ .Values.namespace.name | quote }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "ecommerce-app.fullname" . }}-clusterrole
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "ecommerce-app.fullname" . }}-clusterrolebinding
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "ecommerce-app.fullname" . }}-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "ecommerce-app.serviceAccountName" . }}
+    namespace: {{ .Values.namespace.name | quote }}
+{{- end }}

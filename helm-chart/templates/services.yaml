@@ -1,0 +1,58 @@
+{{- if .Values.services.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+    service: postgres
+spec:
+  type: {{ .Values.services.postgres.type }}
+  ports:
+    - port: {{ .Values.services.postgres.port }}
+      targetPort: {{ .Values.services.postgres.targetPort }}
+      protocol: TCP
+      name: postgres
+  selector:
+    app: postgres
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-api-service
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+    service: flask-api
+spec:
+  type: {{ .Values.services.flask.type }}
+  ports:
+    - port: {{ .Values.services.flask.port }}
+      targetPort: {{ .Values.services.flask.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    app: flask-api
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-frontend-service
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+    service: nginx-frontend
+spec:
+  type: {{ .Values.services.nginx.type }}
+  ports:
+    - port: {{ .Values.services.nginx.port }}
+      targetPort: {{ .Values.services.nginx.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    app: nginx-frontend
+{{- end }}

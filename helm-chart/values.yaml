@@ -1,80 +1,194 @@
-# Default replica count for deployments
-replicaCount: 1
+# Ecommerce Application Helm Chart Values
+# Complete configuration for all components
 
-# Presentation Tier (Nginx Frontend)
-presentation:
-  replicaCount: 1
-  image:
-    repository: your-docker-repo/ecommerce-presentation
-    pullPolicy: IfNotPresent
-    tag: "latest"
-  service:
-    type: LoadBalancer
-    port: 80
-    targetPort: 80
-  resources:
-    limits:
-      cpu: 200m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-  healthcheck:
-    enabled: true
-    path: /health
-    initialDelaySeconds: 10
-    periodSeconds: 30
-    timeoutSeconds: 10
+# ==========================================
+# Namespace Configuration
+# ==========================================
+namespace:
+  create: true
+  name: prod-ecommerce
 
-# Application Tier (Flask Backend)
-application:
-  replicaCount: 1
-  image:
-    repository: your-docker-repo/ecommerce-application
-    pullPolicy: IfNotPresent
-    tag: "latest"
-  service:
+# ==========================================
+# General Settings
+# ==========================================
+environment: production
+nameOverride: ""
+fullnameOverride: ""
+
+# Common labels applied to all resources
+commonLabels:
+  app: ecommerce
+  managed-by: helm
+
+# AWS Configuration
+awsRegion: eu-north-1
+awsAccountId: "593067253640"
+
+# ==========================================
+# ConfigMaps
+# ==========================================
+configMaps:
+  enabled: true
+  appConfig:
+    FLASK_ENV: production
+    DEBUG: "false"
+    LOG_LEVEL: INFO
+
+# ==========================================
+# Secrets (External Secrets will override)
+# ==========================================
+secrets:
+  enabled: true
+  data:
+    DB_USER: "ecommerce_user"
+    DB_PASSWORD: "change-me-in-production"
+  dockerConfig: ""
+
+# ==========================================
+# RBAC - ServiceAccount & Roles
+# ==========================================
+rbac:
+  enabled: true
+  create: true
+  serviceAccountName: ecommerce-sa
+  # IRSA - IAM Roles for Service Accounts (EKS OIDC)
+  irsaRoleArn: "arn:aws:iam::593067253640:role/ecommerce-external-secrets-role"
+
+# ==========================================
+# Services
+# ==========================================
+services:
+  enabled: true
+  postgres:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+  flask:
     type: ClusterIP
     port: 5000
     targetPort: 5000
+  nginx:
+    type: LoadBalancer
+    port: 80
+    targetPort: 80
+
+# ==========================================
+# Database - PostgreSQL StatefulSet
+# ==========================================
+database:
+  enabled: true
+  replicas: 1
+  name: ecommerce
+  user: ecommerce_user
+  port: 5432
+  storage: 10Gi
+  image:
+    repository: postgres
+    tag: "15-alpine"
+    pullPolicy: IfNotPresent
   resources:
     limits:
-      cpu: 300m
+      cpu: 500m
       memory: 512Mi
     requests:
-      cpu: 150m
+      cpu: 250m
       memory: 256Mi
-  healthcheck:
-    enabled: true
-    path: /ready
-    initialDelaySeconds: 20
-    periodSeconds: 30
-    timeoutSeconds: 10
-  env:
-    - name: FLASK_ENV
-      value: "production"
-    - name: DATABASE_URL
-      valueFrom:
-        secretKeyRef:
-          name: ecommerce-secrets
-          key: database-url
-    - name: SECRET_KEY
-      valueFrom:
-        secretKeyRef:
-          name: ecommerce-secrets
-          key: secret-key
 
-# Image pull secrets (if using private Docker registry)
+# ==========================================
+# Application Deployments
+# ==========================================
+application:
+  enabled: true
+  
+  # Flask API Backend
+  flask:
+    replicas: 3
+    port: 5000
+    image:
+      repository: your-registry/ecommerce-app
+      tag: latest
+      pullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+    livenessProbe:
+      initialDelaySeconds: 20
+      periodSeconds: 10
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 5
+  
+  # Nginx Frontend
+  nginx:
+    replicas: 3
+    port: 80
+    image:
+      repository: your-registry/ecommerce-presentation
+      tag: latest
+      pullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    livenessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+# ==========================================
+# Domain Configuration (for SSL/HTTPS)
+# ==========================================
+domain:
+  name: morecraze.in
+  # Certificate ARN from AWS ACM (populate after terraform apply)
+  certificateArn: "arn:aws:acm:eu-north-1:593067253640:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# ==========================================
+# Ingress - AWS ALB
+# ==========================================
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    # HTTPS/SSL Configuration
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/certificate-arn: "{{ .Values.domain.certificateArn }}"
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+  rules:
+    - host: "{{ .Values.domain.name }}"
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: nginx-frontend-service
+          servicePort: 80
+        - path: /api
+          pathType: Prefix
+          serviceName: flask-api-service
+          servicePort: 5000
+  tls: []
+
+# ==========================================
+# External Secrets - AWS Integration
+# ==========================================
+externalSecrets:
+  enabled: true
+  refreshPolicy: 1h
+
+# ==========================================
+# Additional Settings
+# ==========================================
 imagePullSecrets: []
-
-# Node selector for pod scheduling
 nodeSelector: {}
-
-# Tolerations for node taints
 tolerations: []
-
-# Pod affinity/anti-affinity
 affinity: {}
-
-# Environment
-environment: development

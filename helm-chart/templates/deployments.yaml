@@ -1,0 +1,119 @@
+{{- if .Values.application.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-api
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+    app: flask-api
+spec:
+  replicas: {{ .Values.application.flask.replicas }}
+  selector:
+    matchLabels:
+      app: flask-api
+  template:
+    metadata:
+      labels:
+        app: flask-api
+        {{- with .Values.commonLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "ecommerce-app.serviceAccountName" . }}
+      imagePullSecrets:
+        - name: docker-registry-secret
+      containers:
+        - name: flask-api
+          image: "{{ .Values.application.flask.image.repository }}:{{ .Values.application.flask.image.tag }}"
+          imagePullPolicy: {{ .Values.application.flask.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.application.flask.port }}
+              name: http
+          env:
+            - name: FLASK_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "ecommerce-app.fullname" . }}-config
+                  key: FLASK_ENV
+            - name: FLASK_DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "ecommerce-app.fullname" . }}-config
+                  key: DEBUG
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ecommerce-secrets
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ecommerce-secrets
+                  key: SECRET_KEY
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "ecommerce-app.fullname" . }}-config
+                  key: LOG_LEVEL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.application.flask.port }}
+            initialDelaySeconds: {{ .Values.application.flask.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.application.flask.livenessProbe.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.application.flask.port }}
+            initialDelaySeconds: {{ .Values.application.flask.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.application.flask.readinessProbe.periodSeconds }}
+          resources:
+            {{- toYaml .Values.application.flask.resources | nindent 12 }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-frontend
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+    app: nginx-frontend
+spec:
+  replicas: {{ .Values.application.nginx.replicas }}
+  selector:
+    matchLabels:
+      app: nginx-frontend
+  template:
+    metadata:
+      labels:
+        app: nginx-frontend
+        {{- with .Values.commonLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "ecommerce-app.serviceAccountName" . }}
+      containers:
+        - name: nginx
+          image: "{{ .Values.application.nginx.image.repository }}:{{ .Values.application.nginx.image.tag }}"
+          imagePullPolicy: {{ .Values.application.nginx.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.application.nginx.port }}
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.application.nginx.port }}
+            initialDelaySeconds: {{ .Values.application.nginx.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.application.nginx.livenessProbe.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.application.nginx.port }}
+            initialDelaySeconds: {{ .Values.application.nginx.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.application.nginx.readinessProbe.periodSeconds }}
+          resources:
+            {{- toYaml .Values.application.nginx.resources | nindent 12 }}
+{{- end }}

@@ -1,0 +1,12 @@
+{{- if .Values.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace.name | quote }}
+  labels:
+    app: {{ include "ecommerce-app.name" . }}
+    environment: {{ .Values.environment }}
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

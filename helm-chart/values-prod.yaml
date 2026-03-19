@@ -1,0 +1,76 @@
+# Helm Chart Configuration - Production Environment
+# Use this as a template for deploying to different environments
+
+# Production-specific settings
+environment: production
+
+# Namespace
+namespace:
+  create: true
+  name: prod-ecommerce
+
+# Database
+database:
+  replicas: 1
+  storage: 50Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# Application tier
+application:
+  flask:
+    replicas: 3
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+  
+  nginx:
+    replicas: 3
+    resources:
+      limits:
+        cpu: 250m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+# Domain Configuration (for SSL/HTTPS)
+domain:
+  name: morecraze.in
+  # Certificate ARN from AWS ACM (update after terraform apply)
+  certificateArn: "arn:aws:acm:eu-north-1:593067253640:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Ingress - Production Configuration
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/certificate-arn: "{{ .Values.domain.certificateArn }}"
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+  rules:
+    - host: "{{ .Values.domain.name }}"
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: nginx-frontend-service
+          servicePort: 80
+        - path: /api
+          pathType: Prefix
+          serviceName: flask-api-service
+          servicePort: 5000
+  tls: []
+
+# ArgoCD can use this as override
+# helm install ... -f values-prod.yaml

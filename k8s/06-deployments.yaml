@@ -1,0 +1,74 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-frontend
+  namespace: prod-ecommerce
+  labels:
+    app: nginx-frontend
+    tier: presentation
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-frontend
+  template:
+    metadata:
+      labels:
+        app: nginx-frontend
+        tier: presentation
+    spec:
+      containers:
+        - name: nginx-container
+          image: usernamenarendra/morecraze-presentation:v2.6.0
+          ports:
+            - containerPort: 80
+              name: http
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-api
+  namespace: prod-ecommerce
+  labels:
+    app: flask-api
+    tier: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: flask-api
+  template:
+    metadata:
+      labels:
+        app: flask-api
+        tier: backend
+    spec:
+      containers:
+        - name: flask-container
+          image: usernamenarendra/morecraze-application:v2.1.0
+          ports:
+            - containerPort: 5000
+              name: api-http
+          env:
+            - name: FLASK_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: ecommerce-config
+                  key: FLASK_ENV
+            - name: DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: ecommerce-config
+                  key: DEBUG
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ecommerce-secrets
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ecommerce-secrets
+                  key: SECRET_KEY

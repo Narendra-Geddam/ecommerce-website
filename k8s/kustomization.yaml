@@ -1,0 +1,18 @@
+# Kustomization file for easy deployment
+# Usage: kubectl apply -k k8s/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: prod-ecommerce
+
+# Define the order of resource deployment
+resources:
+  - 01-namespace.yaml
+  - 02-configmaps.yaml
+  - 03-secrets.yaml
+  - 04-services.yaml
+  - 05-statefulset-postgres.yaml
+  - 06-deployments.yaml
+  - 07-ingress.yaml
+  - 09-external-secrets-setup.yaml
