@@ -1,0 +1,19 @@
+graph TB
+    APP[Flask Backend with Instrumentation]
+    APP -->|Metrics| PROM[Prometheus Port 9090]
+    APP -->|Logs| LOKI[Loki Port 3100]
+    APP -->|Traces| JAEGER[Jaeger Port 16686]
+    LOKI <-->|Promtail| NODES[K8s Nodes Log Collection]
+    PROM -->|Queries| GRAF[Grafana Port 3000]
+    LOKI -->|Data| GRAF
+    GRAF -->|Dashboard| USER[Operations Team]
+    JAEGER -->|Traces| USER
+    USER -->|Monitors| DEPLOY[Deployment]
+    DEPLOY -->|Canary 5 percent| STABLE[Stable Pod v1.0]
+    DEPLOY -->|Canary 5 percent| CANARY[Canary Pod v1.1]
+    STABLE -->|Metrics| PROM
+    CANARY -->|Metrics| PROM
+    PROM -->|Error Rate over 1 percent| ALERT[Trigger Rollback]
+    ALERT -->|Isolate| CANARY
+    PROM -->|Error Rate below 1 percent| OK[Healthy]
+    OK -->|Increase to 20 percent| CANARY

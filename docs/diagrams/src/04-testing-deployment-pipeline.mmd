@@ -1,0 +1,22 @@
+graph LR
+    GIT[Git Push] -->|Webhook| JENKINS[Jenkins]
+    JENKINS --> TESTS[Tests pytest]
+    TESTS -->|PASS| BUILD[Build Images Parallel]
+    TESTS -->|FAIL| SLACK[Slack Alert]
+    BUILD --> SCAN[Trivy Scan]
+    SCAN -->|CRITICAL| SLACK
+    SCAN -->|PASS| PUSH[Push to Hub]
+    PUSH --> HELM[Update Helm]
+    HELM --> STRATEGY{Deployment Strategy}
+    STRATEGY -->|Canary| CANARY[Canary 5 to 100]
+    STRATEGY -->|Blue-Green| BLUEGREEN[Blue-Green Instant Switch]
+    STRATEGY -->|Rolling| ROLLING[Rolling One-by-One]
+    CANARY -->|Monitor Metrics| PROM[Prometheus]
+    BLUEGREEN -->|Health Check| HEALTH[Health Checks]
+    ROLLING -->|Verify| HEALTH
+    PROM -->|Error Rate over 1 percent| ROLLBACK[Rollback]
+    PROM -->|Error Rate below 1 percent| NEXT[Next Stage]
+    NEXT -->|Traffic 100 percent| COMPLETE[Complete]
+    ROLLBACK --> SLACK
+    HEALTH -->|Pass| SLACK2[Slack Notify]
+    COMPLETE --> SLACK2

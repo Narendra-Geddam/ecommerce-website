@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Track your MoreCraze orders and delivery status."/>
+  <title>My Orders — MoreCraze</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+  <div class="page-wrapper">
+    <div class="container">
+      <div class="page-header"><h1>My <span class="text-gradient">Orders</span></h1></div>
+      <div id="orders-content"><div class="card skeleton" style="height:200px;margin-bottom:16px"></div><div class="card skeleton" style="height:200px"></div></div>
+    </div>
+  </div>
+  <footer id="main-footer"></footer>
+  <script src="/app.js"></script>
+  <script>
+    const statusClass = s => s === 'Delivered' ? 'status-delivered' : s === 'Shipped' ? 'status-shipped' : 'status-processing';
+    const steps = ['Order Placed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered'];
+
+    function getStepIndex(status) {
+      const map = { 'Processing': 1, 'Shipped': 2, 'Delivered': 4 };
+      return map[status] ?? 0;
+    }
+
+    async function loadOrders() {
+      const u = await checkAuth();
+      if (!u) { window.location.href = '/login.html'; return; }
+      const wrap = document.getElementById('orders-content');
+      try {
+        const orders = await api('/orders');
+        if (!orders.length) {
+          wrap.innerHTML = `<div class="empty-state fade-in">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <h2>No orders yet</h2><p>Place your first order to see it here.</p>
+            <a href="/" class="btn btn-primary">Browse Products</a></div>`;
+          return;
+        }
+        wrap.innerHTML = orders.map((o, idx) => {
+          const done = getStepIndex(o.status);
+          return `<div class="card order-card fade-in" style="margin-bottom:20px;animation-delay:${idx * 0.1}s">
+            <div class="order-header">
+              <div><span class="order-id">Order #${o.id}</span><span style="margin-left:12px;color:var(--text-dim);font-size:.85rem">${new Date(o.order_date).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}</span></div>
+              <div class="flex"><span class="status-badge ${statusClass(o.status)}">${o.status}</span><span class="order-total">${formatPrice(o.total_amount)}</span></div>
+            </div>
+            <div class="tracking-timeline">${steps.map((s, i) => `<div class="tracking-step${i <= done ? ' done' : ''}">${s}</div>`).join('')}</div>
+            ${o.items ? `<div class="order-items-preview">${o.items.map(i => `<img src="${i.image_url}" alt="${i.name}" title="${i.name} × ${i.quantity}" onerror="this.style.background='#18181B'"/>`).join('')}</div>` : ''}
+            ${o.delivery_date ? `<p style="font-size:.85rem;color:var(--text-dim)">Expected delivery: ${new Date(o.delivery_date).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}</p>` : ''}
+          </div>`;
+        }).join('');
+      } catch { wrap.innerHTML = '<div class="empty-state"><h2>Error loading orders</h2></div>'; }
+    }
+    initApp('orders').then(loadOrders);
+  </script>
+</body>
+</html>

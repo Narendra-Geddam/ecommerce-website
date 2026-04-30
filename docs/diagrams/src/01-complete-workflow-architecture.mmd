@@ -1,0 +1,27 @@
+graph TD
+    A[Developer Push Code] -->|Git Push| B[GitHub Repo main branch]
+    B -->|Webhook| C[Jenkins Pipeline Triggered]
+    C --> D[Checkout Code]
+    D --> E[Build Images Parallel]
+    E --> E1[Backend app.py]
+    E --> E2[Frontend nginx.conf]
+    E1 --> F[Trivy Security Scan]
+    E2 --> F
+    F -->|Pass| G[Push to Docker Hub]
+    F -->|Fail| H[Notify Developer]
+    G --> I[Update Helm values.yaml]
+    I --> J[Git Commit and Push]
+    J --> K[ArgoCD Sync]
+    K --> L[Kubernetes EKS prod-ecommerce]
+    L --> L1[PostgreSQL Statefulset]
+    L --> L2[Flask Backend Deployment 3x]
+    L --> L3[Nginx Frontend Deployment 3x]
+    L --> M[External Secrets AWS Sync]
+    M --> M1[AWS Secrets Manager database-url secret-key]
+    M --> M2[AWS Parameter Store flask-env debug log-level]
+    L3 -.->|Reverse Proxy| L2
+    L2 -.->|TCP 5432| L1
+    L1 --> N[Monitoring Health Checks]
+    L2 --> N
+    L3 --> N
+    N -->|health ready live| O[Observability Metrics]

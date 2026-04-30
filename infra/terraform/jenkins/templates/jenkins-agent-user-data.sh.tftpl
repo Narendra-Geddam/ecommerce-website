@@ -1,0 +1,83 @@
+#!/bin/bash
+# Jenkins Agent Bootstrap - Ubuntu 22.04 LTS
+# This agent is provisioned by EC2 Fleet plugin and must have all
+# build tools pre-installed so the Jenkinsfile pipeline works immediately.
+set -uo pipefail
+
+exec > >(tee /var/log/jenkins-agent-bootstrap.log) 2>&1
+
+echo "=========================================="
+echo "[INFO] Jenkins Agent Bootstrap Start"
+echo "=========================================="
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+
+# ── 1. Core packages ─────────────────────────────────────────────────
+echo "[INFO] Installing core packages"
+apt-get install -y \
+  fontconfig openjdk-17-jre \
+  git docker.io jq \
+  apt-transport-https ca-certificates curl gnupg lsb-release wget unzip \
+  python3 python3-pip python3-venv
+
+# Install pytest via pip (python3-pytest package may not exist on all Ubuntu versions)
+pip3 install pytest || true
+
+# ── 2. Docker ─────────────────────────────────────────────────────────
+echo "[INFO] Configuring Docker"
+systemctl enable docker
+systemctl start docker
+usermod -aG docker ubuntu
+
+# ── 3. Trivy (container security scanner) ─────────────────────────────
+echo "[INFO] Installing Trivy"
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
+  | gpg --dearmor | tee /usr/share/keyrings/trivy.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb \
+  $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/trivy.list
+apt-get update -y
+apt-get install -y trivy || echo "[WARN] Trivy install failed; pipeline scan stage will be skipped"
+
+# ── 4. Kubectl ────────────────────────────────────────────────────────
+echo "[INFO] Installing Kubectl"
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key \
+  | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' \
+  | tee /etc/apt/sources.list.d/kubernetes.list
+apt-get update -y
+apt-get install -y kubectl || echo "[WARN] kubectl install failed"
+
+# ── 5. Helm ───────────────────────────────────────────────────────────
+echo "[INFO] Installing Helm"
+curl -fsSL https://baltocdn.com/helm/signing.asc \
+  | gpg --dearmor | tee /usr/share/keyrings/helm.gpg > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] \
+  https://baltocdn.com/helm/stable/debian/ all main" \
+  | tee /etc/apt/sources.list.d/helm-stable-debian.list
+apt-get update -y
+apt-get install -y helm || echo "[WARN] Helm install failed"
+
+# ── 6. ArgoCD CLI ─────────────────────────────────────────────────────
+echo "[INFO] Installing ArgoCD CLI"
+curl -sSL -o /tmp/argocd-linux-amd64 \
+  https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+install -m 555 /tmp/argocd-linux-amd64 /usr/local/bin/argocd || echo "[WARN] ArgoCD install failed"
+
+# ── 7. Jenkins agent user ─────────────────────────────────────────────
+echo "[INFO] Configuring Jenkins agent user"
+useradd -m -s /bin/bash jenkins || true
+usermod -aG docker jenkins
+mkdir -p /home/jenkins/.ssh
+chown -R jenkins:jenkins /home/jenkins/.ssh
+chmod 700 /home/jenkins/.ssh
+
+# Create a workspace directory
+mkdir -p /home/jenkins/workspace
+chown jenkins:jenkins /home/jenkins/workspace
+
+echo "=========================================="
+echo "[INFO] Jenkins Agent Bootstrap DONE!"
+echo "[INFO] Tools: java, docker, git, trivy, kubectl, helm, argocd, python3, pytest"
+echo "=========================================="

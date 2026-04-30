@@ -1,6 +1,6 @@
-# 🚀 Ecommerce Application on AWS EKS
+# 🚀 MoreCraze E-Commerce Application on AWS EKS
 
-> **Production-Ready Infrastructure as Code | Multi-Tier Kubernetes Deployment | Enterprise-Level Architecture**
+> **Production-Ready Infrastructure as Code | AWS RDS & EKS Deployment | Enterprise-Level Architecture**
 
 <!-- Badges -->
 <div align="center">
@@ -27,16 +27,43 @@
 
 1. [Quick Start](#quick-start)
 2. [Helm Deployment (Recommended)](#helm-deployment-recommended)
-3. [Architecture Overview](#architecture-overview)
-4. [Prerequisites](#prerequisites)
-5. [Project Structure](#project-structure)
-6. [Terraform - Secrets & Parameters](#terraform---secrets--parameters)
-7. [External Secrets Integration](#external-secrets-integration)
-8. [IRSA Setup](#irsa-setup)
-9. [Deployment Methods](#deployment-methods)
-10. [Troubleshooting](#troubleshooting)
-11. [AWS CLI Commands Reference](#aws-cli-commands-reference)
-12. [Cleanup & Destruction](#cleanup--destruction)
+3. [Architecture Diagrams (SVG)](#architecture-diagrams-svg)
+4. [Architecture Overview](#architecture-overview)
+5. [Prerequisites](#prerequisites)
+6. [Project Structure](#project-structure)
+7. [Terraform - Secrets & Parameters](#terraform---secrets--parameters)
+8. [External Secrets Integration](#external-secrets-integration)
+9. [IRSA Setup](#irsa-setup)
+10. [Deployment Methods](#deployment-methods)
+11. [Troubleshooting](#troubleshooting)
+12. [AWS CLI Commands Reference](#aws-cli-commands-reference)
+13. [Cleanup & Destruction](#cleanup--destruction)
+
+---
+
+## Architecture Diagrams (SVG)
+
+These diagrams are stored as SVG files for long-term reuse and easy updates.
+
+### 1) Complete Workflow and Architecture
+
+![Complete Workflow and Architecture](docs/diagrams/01-complete-workflow-architecture.svg)
+
+### 2) Folder Structure and Component Hierarchy
+
+![Folder Structure and Component Hierarchy](docs/diagrams/02-folder-structure-hierarchy.svg)
+
+### 3) Observability and Canary Deployment Architecture
+
+![Observability and Canary Deployment Architecture](docs/diagrams/03-observability-canary-architecture.svg)
+
+### 4) Complete Testing and Deployment Pipeline
+
+![Complete Testing and Deployment Pipeline](docs/diagrams/04-testing-deployment-pipeline.svg)
+
+### 5) New Components and Capabilities Added
+
+![New Components and Capabilities Added](docs/diagrams/05-new-components-capabilities.svg)
 
 ---
 
@@ -46,13 +73,13 @@
 
 ```powershell
 # 1. Deploy Terraform secrets (AWS credentials & parameters)
-cd terraform
+cd infra/terraform
 terraform init
 terraform apply
 
 # 2. Deploy entire application using Helm
-cd ..
-helm install ecommerce ./helm-chart -n prod-ecommerce --create-namespace
+cd ../..
+helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce --create-namespace
 
 # 3. Verify deployment
 kubectl get all -n prod-ecommerce
@@ -102,10 +129,10 @@ helm version
 cd c:\Users\don81\OneDrive\Desktop\demo
 
 # Dry-run to preview
-helm install ecommerce ./helm-chart -n prod-ecommerce --create-namespace --dry-run
+helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce --create-namespace --dry-run
 
 # Install
-helm install ecommerce ./helm-chart -n prod-ecommerce --create-namespace
+helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce --create-namespace
 
 # Verify
 helm list -n prod-ecommerce
@@ -116,10 +143,10 @@ helm status ecommerce -n prod-ecommerce
 
 ```powershell
 # Edit values
-notepad helm-chart/values.yaml
+notepad infra/kubernetes/helm/values.yaml
 
 # Upgrade
-helm upgrade ecommerce ./helm-chart -n prod-ecommerce
+helm upgrade ecommerce ./infra/kubernetes/helm -n prod-ecommerce
 
 # Rollback if needed
 helm rollback ecommerce 1 -n prod-ecommerce
@@ -129,13 +156,13 @@ helm rollback ecommerce 1 -n prod-ecommerce
 
 ```powershell
 # Override specific values on command line
-helm install ecommerce ./helm-chart -n prod-ecommerce \
+helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce \
   --set application.flask.replicas=5 \
   --set application.nginx.replicas=3 \
   --set database.storage=50Gi
 
 # Or use custom values file
-helm install ecommerce ./helm-chart -n prod-ecommerce \
+helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce \
   -f custom-values.yaml
 ```
 
@@ -143,7 +170,7 @@ helm install ecommerce ./helm-chart -n prod-ecommerce \
 
 ```powershell
 # Template rendering (see what will be deployed)
-helm template ecommerce ./helm-chart -n prod-ecommerce
+helm template ecommerce ./infra/kubernetes/helm -n prod-ecommerce
 
 # Get values
 helm get values ecommerce -n prod-ecommerce
@@ -175,7 +202,7 @@ kubectl delete namespace prod-ecommerce
 │                    AWS Account (593067253640)           │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │  AWS Secrets Manager (3 secrets)                │   │
-│  │  ├─ ecommerce/database-url                      │   │
+│  │  ├─ ecommerce/database-url (Auto-generated)     │   │
 │  │  ├─ ecommerce/secret-key                        │   │
 │  │  └─ ecommerce/docker-config                     │   │
 │  └────────────────────┬─────────────────────────────┘   │
@@ -184,6 +211,10 @@ kubectl delete namespace prod-ecommerce
 │  │  ├─ /ecommerce/flask-env                        │   │
 │  │  ├─ /ecommerce/debug                            │   │
 │  │  └─ /ecommerce/log-level                        │   │
+│  └────────────────────┬─────────────────────────────┘   │
+│  ┌────────────────────v─────────────────────────────┐   │
+│  │  Amazon RDS (PostgreSQL 15)                     │   │
+│  │  └─ db.t3.micro (ecommerce_db)                  │   │
 │  └────────────────────┬─────────────────────────────┘   │
 │  ┌────────────────────v─────────────────────────────┐   │
 │  │  IAM Role (ecommerce-external-secrets-role)     │   │
@@ -210,7 +241,7 @@ kubectl delete namespace prod-ecommerce
         │ Application Pods           │
         │ ├─ Flask API (3x)          │
         │ ├─ Nginx Frontend (3x)     │
-        │ └─ PostgreSQL (1x)         │
+        │ └─ DB Init Job (Hook)      │
         └────────────────────────────┘
 ```
 
@@ -235,73 +266,60 @@ kubectl delete namespace prod-ecommerce
 ## Project Structure
 
 ```
-demo/
-├── helm-chart/                          # ⭐ PRIMARY - Helm Chart (use this!)
-│   ├── Chart.yaml                      # Chart metadata
-│   ├── README.md                       # Helm documentation
-│   ├── values.yaml                     # Default configuration
-│   ├── values-dev.yaml                 # Development overrides
-│   ├── values-prod.yaml                # Production overrides
-│   └── templates/                      # 9 K8s resource templates
-│       ├── namespace.yaml
-│       ├── configmap.yaml
-│       ├── secret.yaml
-│       ├── rbac.yaml
-│       ├── services.yaml
-│       ├── deployments.yaml            # Flask + Nginx
-│       ├── statefulset-postgres.yaml
-│       ├── ingress.yaml
-│       └── external-secrets.yaml
+e-commerce/
+├── apps/                               # Application source code
+│   ├── backend/                         # Flask backend API
+│   │   ├── app.py
+│   │   ├── requirements.txt
+│   │   └── Dockerfile
+│   └── frontend/                        # Nginx frontend
+│       ├── index.html
+│       ├── nginx.conf
+│       ├── /static
+│       ├── /images
+│       └── Dockerfile
 │
-├── k8s/                                 # 📚 REFERENCE - For learning
-│   ├── 01-namespace.yaml               # Learn K8s here (not for deployment)
-│   ├── 02-configmaps.yaml
-│   ├── 03-secrets.yaml
-│   ├── 04-services.yaml
-│   ├── 05-statefulset-postgres.yaml
-│   ├── 06-deployments.yaml
-│   ├── 07-ingress.yaml
-│   ├── 09-external-secrets-setup.yaml
-│   ├── kustomization.yaml
-│   └── README.md
+├── infra/                              # Infrastructure as Code
+│   ├── kubernetes/
+│   │   ├── helm/                        # ⭐ PRIMARY - Helm Chart (use this!)
+│   │   │   ├── Chart.yaml
+│   │   │   ├── README.md
+│   │   │   ├── values.yaml
+│   │   │   ├── values-dev.yaml
+│   │   │   ├── values-prod.yaml
+│   │   │   └── templates/
+│   │   └── base/                        # 📚 REFERENCE - K8s learning manifests
+│   │       ├── 01-namespace.yaml
+│   │       ├── 02-configmaps.yaml
+│   │       └── kustomization.yaml
+│   └── terraform/                       # 🏗️ AWS Infrastructure as Code
+│       ├── provider.tf
+│       ├── variables.tf
+│       ├── secrets.tf
+│       ├── parameters.tf
+│       └── outputs.tf
 │
-├── terraform/                           # 🏗️ Infrastructure as Code
-│   ├── provider.tf                   # AWS provider
-│   ├── variables.tf                  # Input variables
-│   ├── secrets.tf                    # Secrets Manager (3 secrets)
-│   ├── parameters.tf                 # Parameter Store (3 params)
-│   ├── outputs.tf                    # Outputs
-│   ├── terraform.tfvars              # Configuration
-│   ├── terraform.tfvars.example
-│   ├── terraform.tfstate
-│   ├── terraform-secrets-manager.ps1 # Management script
-│   ├── terraform-secrets-manager.sh
-│   ├── policies/                     # IAM & Trust policies
-│   └── secrets/                      # Docker config
+├── ci-cd/                              # CI/CD Pipeline
+│   └── jenkins/
+│       ├── Jenkinsfile
+│       └── docker-compose.yml
 │
-├── application/                         # Flask backend
-│   ├── app.py
-│   ├── requirements.txt
-│   └── Dockerfile
+├── scripts/                            # Automation scripts
 │
-├── presentation/                        # Nginx frontend
-│   ├── index.html
-│   ├── /static
-│   ├── /images
-│   └── Dockerfile
+├── docs/                               # Documentation
 │
-├── data/                               # Database & schema
+├── data/                               # Database schema
 │   └── schema.sql
 │
-├── tests/                              # Testing (placeholder)
+├── tests/                              # Test suites
 │
-└── README.md                           # This file (complete guide)
+└── README.md                           # This file
 ```
 
 **Legend:**
-- ⭐ **helm-chart/** - Use for deployment (Kubernetes package management)
-- 📚 **k8s/** - Reference learning (individual K8s manifests)
-- 🏗️ **terraform/** - AWS infrastructure (secrets & parameters)
+- ⭐ **infra/kubernetes/helm/** - Use for deployment (Kubernetes package management)
+- 📚 **infra/kubernetes/base/** - Reference learning (individual K8s manifests)
+- 🏗️ **infra/terraform/** - AWS infrastructure (secrets & parameters)
 
 ---
 
@@ -320,65 +338,6 @@ kubectl get all -n prod-ecommerce
 ---
 
 ## Project Structure
-
-```
-demo/
-├── helm-chart/                          # ⭐ PRIMARY - Helm Chart (use this)
-│   ├── Chart.yaml                      # Chart metadata
-│   ├── values.yaml                     # Configuration values
-│   └── templates/                      # All K8s resource templates
-│       ├── namespace.yaml
-│       ├── configmap.yaml
-│       ├── secret.yaml
-│       ├── rbac.yaml
-│       ├── services.yaml
-│       ├── deployments.yaml            # Flask + Nginx
-│       ├── statefulset-postgres.yaml
-│       ├── ingress.yaml
-│       ├── external-secrets.yaml
-│       └── _helpers.tpl
-│
-├── k8s/                                 # ⚠️ LEGACY - Old manifests (superseded by Helm)
-│   ├── 01-namespace.yaml
-│   ├── 02-configmaps.yaml
-│   ├── 03-secrets.yaml
-│   ├── 04-services.yaml
-│   ├── 05-statefulset-postgres.yaml
-│   ├── 06-deployments.yaml
-│   ├── 07-ingress.yaml
-│   ├── 09-external-secrets-setup.yaml
-│   ├── kustomization.yaml
-│   └── README.md
-│
-├── terraform/                           # Infrastructure as Code (AWS)
-│   ├── provider.tf
-│   ├── variables.tf
-│   ├── secrets.tf                      # Secrets Manager (3 secrets)
-│   ├── parameters.tf                   # Parameter Store (3 params)
-│   ├── outputs.tf
-│   ├── terraform.tfvars
-│   ├── terraform.tfvars.example
-│   ├── terraform-secrets-manager.ps1  # Management script
-│   ├── terraform-secrets-manager.sh
-│   ├── policies/                       # IAM & Trust policies
-│   └── secrets/                        # Docker config
-│
-├── argocd/                              # GitOps (optional)
-│   └── application.yaml                # ArgoCD app (points to helm-chart/)
-│
-├── application/                         # Flask backend
-│   ├── app.py
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── presentation/                        # Nginx frontend
-│   ├── index.html
-│   └── Dockerfile
-│
-└── README.md                            # This file
-```
-
-**Note:** `k8s/` manifests are now superseded by Helm chart. Use `helm-chart/` for latest operations.
 
 ---
 
@@ -415,13 +374,13 @@ notepad terraform.tfvars
 
 **Required values:**
 ```hcl
-database_url = "postgresql://ecommerce:SECURE_PASSWORD@postgres-service.prod-ecommerce.svc.cluster.local:5432/ecommerce"
 secret_key = "your-production-secret-key-here"
-docker_config = '{"auths":{"docker.io":{"username":"usernamenarendra","password":"Narendra@143"}}}'
+docker_config = '{"auths":{"docker.io":{"username":"privatergistry","password":"YOUR_PASSWORD"}}}'
 flask_env = "production"
 debug_mode = "false"
 log_level = "INFO"
 ```
+*(Note: `database_url` is automatically generated by Terraform upon creating the RDS instance and placed directly into Secrets Manager.)*
 
 #### 3. Plan & Apply
 
@@ -553,7 +512,7 @@ kubectl get serviceaccount ecommerce-sa -n prod-ecommerce -o yaml
 
 ```powershell
 # Deploy
-helm install ecommerce ./helm-chart -n prod-ecommerce --create-namespace
+helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce --create-namespace
 
 # Deploy Terraform secrets first
 cd terraform
@@ -642,8 +601,10 @@ kubectl get externalsecrets -n prod-ecommerce -o wide
 ### Problem: Database connection failing
 
 ```powershell
-# Check database logs
-kubectl logs -n prod-ecommerce deployment/postgres
+# Check RDS connectivity from within cluster
+kubectl run -it test-db --image=postgres:15-alpine --rm -- sh
+# Inside pod, try connecting with the DATABASE_URL secret
+# psql $DATABASE_URL
 
 # Check Flask API logs for connection errors
 kubectl logs -n prod-ecommerce deployment/flask-api

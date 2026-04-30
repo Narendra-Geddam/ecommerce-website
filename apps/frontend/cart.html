@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Review items in your MoreCraze shopping cart before checkout."/>
+  <title>Shopping Cart — MoreCraze</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+  <div class="page-wrapper">
+    <div class="container">
+      <div class="page-header"><h1>Shopping <span class="text-gradient">Cart</span></h1></div>
+      <div id="cart-content"></div>
+    </div>
+  </div>
+  <footer id="main-footer"></footer>
+  <script src="/app.js"></script>
+  <script>
+    async function loadCart() {
+      const wrap = document.getElementById('cart-content');
+      try {
+        const items = await api('/cart');
+        if (!items.length) {
+          wrap.innerHTML = `<div class="empty-state fade-in">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+            <h2>Your cart is empty</h2><p>Browse products and add items to your cart.</p>
+            <a href="/" class="btn btn-primary">Start Shopping</a></div>`;
+          return;
+        }
+        const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+        const tax = subtotal * 0.08;
+        wrap.innerHTML = `<div class="page-content"><div>
+          <div class="cart-list">${items.map(i => `
+            <div class="card cart-item fade-in">
+              <img class="cart-item-img" src="${i.image_url}" alt="${i.name}" onerror="this.style.background='#18181B'"/>
+              <div class="cart-item-info">
+                <div class="cart-item-name">${i.name}</div>
+                <div class="cart-item-price">${formatPrice(i.price)}</div>
+                <div style="font-size:.82rem;color:var(--text-dim);margin-top:2px">${i.category}</div>
+              </div>
+              <div class="cart-qty">
+                <button onclick="removeOne(${i.id})">−</button>
+                <span>${i.quantity}</span>
+                <button onclick="addToCart(${i.id}).then(loadCart)">+</button>
+              </div>
+            </div>`).join('')}
+          </div>
+          <div style="margin-top:16px"><button class="btn btn-danger btn-sm" onclick="clearCart()">Clear Cart</button></div>
+        </div>
+        <div><div class="card cart-summary fade-in" style="animation-delay:.15s">
+          <h3 style="margin-bottom:20px">Order Summary</h3>
+          <div class="summary-row"><span>Subtotal (${items.reduce((s,i)=>s+i.quantity,0)} items)</span><span>${formatPrice(subtotal)}</span></div>
+          <div class="summary-row"><span>Tax (8%)</span><span>${formatPrice(tax)}</span></div>
+          <div class="summary-row"><span>Shipping</span><span style="color:var(--success)">Free</span></div>
+          <div class="summary-row total"><span>Total</span><span style="color:var(--accent)">${formatPrice(subtotal + tax)}</span></div>
+          <a href="/checkout.html" class="btn btn-primary btn-block" style="margin-top:20px">Proceed to Checkout</a>
+        </div></div></div>`;
+      } catch { wrap.innerHTML = '<div class="empty-state"><h2>Error loading cart</h2></div>'; }
+    }
+
+    async function removeOne(id) {
+      await api(`/cart/remove/${id}`, { method: 'POST' });
+      await updateCartBadge();
+      loadCart();
+    }
+
+    async function clearCart() {
+      await api('/cart/clear', { method: 'POST' });
+      await updateCartBadge();
+      showToast('Cart cleared', 'info');
+      loadCart();
+    }
+
+    // Override addToCart to also refresh cart view
+    const origAdd = addToCart;
+    addToCart = async (id) => { await origAdd(id); loadCart(); };
+
+    initApp('cart').then(loadCart);
+  </script>
+</body>
+</html>

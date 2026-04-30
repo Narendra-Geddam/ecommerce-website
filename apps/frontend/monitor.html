@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="MoreCraze infrastructure monitoring dashboard — services, metrics, and request tracking."/>
+  <title>Monitor — MoreCraze</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+  <div class="page-wrapper">
+    <div class="container">
+      <div class="page-header">
+        <h1>System <span class="text-gradient">Monitor</span></h1>
+        <p style="color:var(--text-muted);margin-top:4px">Auto-refreshes every 5 seconds &bull; <span id="last-refresh">—</span></p>
+      </div>
+
+      <!-- Stats -->
+      <div class="monitor-grid" id="stats-grid" style="margin-bottom:32px">
+        <div class="card skeleton" style="height:100px"></div><div class="card skeleton" style="height:100px"></div>
+        <div class="card skeleton" style="height:100px"></div><div class="card skeleton" style="height:100px"></div>
+      </div>
+
+      <!-- Services -->
+      <h2 style="margin-bottom:16px">Services</h2>
+      <div class="monitor-grid" id="services-grid" style="margin-bottom:32px">
+        <div class="card skeleton" style="height:120px"></div><div class="card skeleton" style="height:120px"></div><div class="card skeleton" style="height:120px"></div>
+      </div>
+
+      <!-- System Metrics -->
+      <h2 style="margin-bottom:16px">System Resources</h2>
+      <div class="monitor-grid" id="system-grid" style="margin-bottom:32px">
+        <div class="card skeleton" style="height:90px"></div><div class="card skeleton" style="height:90px"></div><div class="card skeleton" style="height:90px"></div>
+      </div>
+
+      <!-- Recent Requests -->
+      <h2 style="margin-bottom:16px">Recent Requests</h2>
+      <div class="card" style="overflow-x:auto">
+        <table class="req-table" id="req-table">
+          <thead><tr><th>ID</th><th>Method</th><th>Path</th><th>Status</th><th>Duration</th><th>Time</th></tr></thead>
+          <tbody><tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <footer id="main-footer"></footer>
+  <script src="/app.js"></script>
+  <script>
+    function barColor(pct) { return pct > 80 ? 'red' : pct > 50 ? 'amber' : 'green'; }
+    function statusColor(s) { return s >= 500 ? 'var(--error)' : s >= 400 ? 'var(--accent)' : 'var(--success)'; }
+
+    async function refresh() {
+      try {
+        const [stats, services, system, reqs] = await Promise.all([
+          fetch('/api/monitor/stats').then(r=>r.json()).catch(()=>({})),
+          fetch('/api/monitor/services').then(r=>r.json()).catch(()=>({services:[]})),
+          fetch('/api/monitor/system').then(r=>r.json()).catch(()=>({})),
+          fetch('/api/monitor/requests').then(r=>r.json()).catch(()=>({requests:[]}))
+        ]);
+
+        document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString();
+
+        // Stats cards
+        const upH = Math.floor((stats.uptime_seconds||0)/3600);
+        const upM = Math.floor(((stats.uptime_seconds||0)%3600)/60);
+        document.getElementById('stats-grid').innerHTML = `
+          <div class="card"><div style="color:var(--text-dim);font-size:.85rem;margin-bottom:4px">Total Requests</div><div class="stat-value">${stats.total_requests||0}</div></div>
+          <div class="card"><div style="color:var(--text-dim);font-size:.85rem;margin-bottom:4px">Error Rate</div><div class="stat-value" style="color:${(stats.error_rate||0)>5?'var(--error)':'var(--success)'}">${stats.error_rate||0}%</div></div>
+          <div class="card"><div style="color:var(--text-dim);font-size:.85rem;margin-bottom:4px">Avg Latency</div><div class="stat-value">${stats.avg_latency_ms||0}<small style="font-size:.5em">ms</small></div></div>
+          <div class="card"><div style="color:var(--text-dim);font-size:.85rem;margin-bottom:4px">Uptime</div><div class="stat-value">${upH}h ${upM}m</div></div>`;
+
+        // Services
+        const svcs = services.services || [];
+        document.getElementById('services-grid').innerHTML = svcs.map(s => `
+          <div class="card">
+            <div class="flex" style="margin-bottom:12px">
+              <span class="service-dot ${s.status}"></span>
+              <strong>${s.name}</strong>
+              <span style="margin-left:auto;font-size:.82rem;color:var(--text-dim)">:${s.port}</span>
+            </div>
+            <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:6px">${s.description}</p>
+            ${s.latency_ms ? `<p style="font-size:.82rem;color:var(--text-dim)">Latency: ${s.latency_ms}ms</p>` : ''}
+            <span style="font-size:.75rem;padding:3px 10px;border-radius:50px;background:rgba(255,255,255,.05);color:var(--text-dim)">${s.type}</span>
+          </div>`).join('');
+
+        // System
+        const cpu = system.cpu_percent || 0;
+        const mem = system.memory || {};
+        const disk = system.disk || {};
+        document.getElementById('system-grid').innerHTML = `
+          <div class="card"><div class="flex" style="justify-content:space-between"><span>CPU</span><strong>${cpu}%</strong></div><div class="progress-bar"><div class="progress-fill ${barColor(cpu)}" style="width:${cpu}%"></div></div></div>
+          <div class="card"><div class="flex" style="justify-content:space-between"><span>Memory</span><strong>${mem.percent||0}%</strong></div><div class="progress-bar"><div class="progress-fill ${barColor(mem.percent||0)}" style="width:${mem.percent||0}%"></div></div><p style="font-size:.78rem;color:var(--text-dim);margin-top:6px">${mem.used_gb||0} / ${mem.total_gb||0} GB</p></div>
+          <div class="card"><div class="flex" style="justify-content:space-between"><span>Disk</span><strong>${disk.percent||0}%</strong></div><div class="progress-bar"><div class="progress-fill ${barColor(disk.percent||0)}" style="width:${disk.percent||0}%"></div></div><p style="font-size:.78rem;color:var(--text-dim);margin-top:6px">${disk.used_gb||0} / ${disk.total_gb||0} GB</p></div>`;
+
+        // Requests table
+        const rows = (reqs.requests || []).slice(-20).reverse();
+        document.querySelector('#req-table tbody').innerHTML = rows.length ? rows.map(r => `
+          <tr>
+            <td style="font-family:monospace;font-size:.8rem">${r.id}</td>
+            <td><span style="font-weight:600">${r.method}</span></td>
+            <td style="font-family:monospace;font-size:.82rem">${r.path}</td>
+            <td><span style="color:${statusColor(r.status)};font-weight:600">${r.status}</span></td>
+            <td>${r.duration_ms}ms</td>
+            <td style="font-size:.8rem;color:var(--text-dim)">${new Date(r.timestamp).toLocaleTimeString()}</td>
+          </tr>`).join('')
+          : '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">No requests recorded</td></tr>';
+      } catch (e) { console.error('Monitor refresh error', e); }
+    }
+
+    initApp('monitor').then(() => { refresh(); setInterval(refresh, 5000); });
+  </script>
+</body>
+</html>

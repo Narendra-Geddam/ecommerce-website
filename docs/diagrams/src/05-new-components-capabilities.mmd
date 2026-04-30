@@ -1,0 +1,29 @@
+graph TD
+    ROOT[E-Commerce System]
+    ROOT --> OBSERV[OBSERVABILITY]
+    ROOT --> TEST[TESTING]
+    ROOT --> DEPLOY[DEPLOYMENTS]
+    OBSERV --> PROM[prometheus-config.yaml]
+    OBSERV --> GRAF[grafana-config.yaml]
+    OBSERV --> LOKI[loki-promtail-config.yaml]
+    OBSERV --> JAE[jaeger-config.yaml]
+    OBSERV --> INST[observability.py]
+    TEST --> CONF[conftest.py and pytest.ini]
+    TEST --> TAPI[test_api.py]
+    TEST --> TAUTH[test_auth.py]
+    TEST --> TOBS[test_observability.py]
+    TEST --> REQ[requirements.txt updated]
+    DEPLOY --> CAN[flagger-canary-config.yaml]
+    DEPLOY --> IST[istio-canary-config.yaml]
+    DEPLOY --> JFIL[Jenkinsfile enhanced]
+    DEPLOY --> DOC[OBSERVABILITY_TESTING_DEPLOYMENTS.md]
+    PROM -.->|Metrics| INST
+    LOKI -.->|Logs| INST
+    JAE -.->|Traces| INST
+    CONF -->|Fixtures| TAPI
+    CONF -->|Fixtures| TAUTH
+    CONF -->|Fixtures| TOBS
+    REQ -.->|Dependencies| INST
+    REQ -.->|Dev dependencies| TEST
+    CAN -.->|Traffic rules| JFIL
+    IST -.->|Pod routing| JFIL

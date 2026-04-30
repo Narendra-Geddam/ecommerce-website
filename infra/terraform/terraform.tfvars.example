@@ -1,0 +1,49 @@
+# Terraform Variables - Example Configuration
+# Copy this file to terraform.tfvars and fill in your actual secret values
+# NOTE: Never commit terraform.tfvars with actual secrets to version control
+#       Use terraform.tfvars.json with .gitignore or use -var flags
+
+# AWS Configuration
+aws_region = "eu-north-1"
+environment = "prod"
+project_name = "ecommerce"
+
+# Secrets Manager Configuration
+secret_project_prefix = "ecommerce"
+database_url = "postgresql://user:password@postgres-service:5432/ecommerce"
+secret_key = "your-flask-secret-key-change-this"
+docker_config = "{\"auths\":{\"docker.io\":{\"username\":\"usernamenarendra\",\"password\":\"Narendra@143\"}}}"
+secrets_recovery_window = 7
+
+# Parameter Store Configuration
+parameter_project_prefix = "/ecommerce"
+flask_env = "production"
+debug_mode = "false"
+log_level = "INFO"
+parameters_tier = "Standard"
+
+# Encryption
+enable_parameter_encryption = true
+# kms_key_id = "arn:aws:kms:eu-north-1:593067253640:key/12345678-1234-1234-1234-123456789012"  # Optional
+
+# Additional Tags
+tags = {
+  Owner      = "Platform Team"
+  CostCenter = "Engineering"
+  ManagedBy  = "Terraform"
+}
+
+# Jenkins Controller + Ephemeral Agents (EC2 Fleet plugin + Launch Template)
+jenkins_vpc_id                       = ""
+jenkins_subnet_ids                   = []
+jenkins_ami_id                       = ""
+jenkins_controller_instance_type     = "t3.medium"
+jenkins_controller_root_volume_size  = 50
+jenkins_controller_public_ip         = true
+jenkins_controller_allowed_cidrs     = ["0.0.0.0/0"]
+jenkins_controller_key_name          = ""
+jenkins_admin_username               = "admin"
+jenkins_admin_password               = "ChangeThisStrongPassword!"
+jenkins_agent_instance_type          = "t3.small"
+jenkins_agent_max_size               = 10
+jenkins_agent_key_name               = ""

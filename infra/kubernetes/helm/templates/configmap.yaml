@@ -1,0 +1,28 @@
+{{- if .Values.configMaps.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ecommerce-app.fullname" . }}-config
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.configMaps.appConfig }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init-script
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "ecommerce-app.labels" . | nindent 4 }}
+data:
+  01_schema.sql: |
+{{ .Files.Get "scripts/01_schema.sql" | indent 4 }}
+  02_update_prices.sql: |
+{{ .Files.Get "scripts/02_update_prices.sql" | indent 4 }}
+{{- end }}

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <defs>
+    <style>
+      .title{font:700 24px Arial;fill:#111827}
+      .pillar{fill:#eef2ff;stroke:#4338ca;stroke-width:2;rx:10;ry:10}
+      .item{fill:#f8fafc;stroke:#475569;stroke-width:1.5;rx:8;ry:8}
+      .txt{font:600 14px Arial;fill:#111827}
+      .small{font:13px Arial;fill:#334155}
+    </style>
+  </defs>
+
+  <text x="24" y="36" class="title">New Components and Capabilities Added</text>
+
+  <rect x="60" y="90" width="320" height="80" class="pillar"/>
+  <text x="150" y="136" class="txt">OBSERVABILITY</text>
+  <rect x="440" y="90" width="320" height="80" class="pillar"/>
+  <text x="555" y="136" class="txt">TESTING</text>
+  <rect x="820" y="90" width="320" height="80" class="pillar"/>
+  <text x="920" y="136" class="txt">DEPLOYMENT</text>
+
+  <rect x="60" y="210" width="320" height="72" class="item"/><text x="95" y="252" class="small">Prometheus + Grafana + Loki + Jaeger</text>
+  <rect x="60" y="300" width="320" height="72" class="item"/><text x="132" y="342" class="small">Backend observability.py</text>
+  <rect x="60" y="390" width="320" height="72" class="item"/><text x="85" y="432" class="small">Alert rules and metrics collection</text>
+
+  <rect x="440" y="210" width="320" height="72" class="item"/><text x="515" y="252" class="small">Pytest configuration</text>
+  <rect x="440" y="300" width="320" height="72" class="item"/><text x="512" y="342" class="small">API and auth tests</text>
+  <rect x="440" y="390" width="320" height="72" class="item"/><text x="468" y="432" class="small">Observability endpoint tests</text>
+
+  <rect x="820" y="210" width="320" height="72" class="item"/><text x="870" y="252" class="small">Canary and Istio manifests</text>
+  <rect x="820" y="300" width="320" height="72" class="item"/><text x="868" y="342" class="small">Enhanced Jenkins pipeline</text>
+  <rect x="820" y="390" width="320" height="72" class="item"/><text x="855" y="432" class="small">Deployment operations guide</text>
+
+  <rect x="260" y="560" width="680" height="90" class="pillar"/>
+  <text x="360" y="612" class="txt">Outcome: production visibility + quality gates + safer releases</text>
+</svg>

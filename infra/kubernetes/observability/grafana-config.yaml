@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+data:
+  prometheus.json: |
+    {
+      "apiVersion": 1,
+      "datasources": [
+        {
+          "name": "Prometheus",
+          "type": "prometheus",
+          "access": "proxy",
+          "url": "http://prometheus:9090",
+          "isDefault": true,
+          "editable": true
+        }
+      ]
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+data:
+  ecommerce-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "E-Commerce System",
+        "tags": ["production", "ecommerce"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Requests Per Second",
+            "targets": [
+              {"expr": "rate(flask_http_request_total[5m])"}
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Error Rate",
+            "targets": [
+              {"expr": "rate(flask_http_request_total{status=~'5..'}[5m])"}
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Response Time (95th percentile)",
+            "targets": [
+              {"expr": "histogram_quantile(0.95, flask_http_request_duration_seconds_bucket)"}
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Container Memory Usage",
+            "targets": [
+              {"expr": "container_memory_usage_bytes{pod=~'ecommerce-.*'}"}
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Pod Count",
+            "targets": [
+              {"expr": "count(kube_pod_info{pod=~'ecommerce-.*'})"}
+            ],
+            "type": "stat"
+          },
+          {
+            "title": "Database Connections",
+            "targets": [
+              {"expr": "pg_stat_activity_count"}
+            ],
+            "type": "graph"
+          }
+        ]
+      }
+    }
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  selector:
+    app: grafana
+  type: LoadBalancer
+  ports:
+    - name: web
+      port: 80
+      targetPort: 3000
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:9.3.0
+          ports:
+            - containerPort: 3000
+              name: web
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: password
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboards
+              mountPath: /etc/grafana/provisioning/dashboards
+      volumes:
+        - name: datasources
+          configMap:
+            name: grafana-datasources
+        - name: dashboards
+          configMap:
+            name: grafana-dashboards
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin
+  namespace: monitoring
+type: Opaque
+stringData:
+  password: "GrafanaAdminPassword123!"

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="View product details on MoreCraze — premium e-commerce store."/>
+  <title>Product — MoreCraze</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+  <div class="page-wrapper">
+    <div class="container">
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb fade-in" id="breadcrumb">
+        <a href="/">Home</a> <span class="bc-sep">›</span> <span>Product</span>
+      </nav>
+
+      <!-- Product Detail -->
+      <div id="product-detail">
+        <div class="product-detail-grid">
+          <div class="card skeleton" style="height:400px"></div>
+          <div><div class="card skeleton" style="height:300px"></div></div>
+        </div>
+      </div>
+
+      <!-- Related Products -->
+      <section class="section" id="related-section" style="display:none">
+        <h2 style="margin-bottom:24px">Related <span class="text-gradient">Products</span></h2>
+        <div class="product-grid" id="related-grid"></div>
+      </section>
+    </div>
+  </div>
+  <footer id="main-footer"></footer>
+  <script src="/app.js"></script>
+  <script>
+    function getCategoryEmoji(cat) {
+      const map = { 'Mobiles': '📱', 'Books': '📚', 'Clothings': '👕', 'Beauty': '✨', 'Furniture': '🪑', 'Laptops': '💻' };
+      return map[cat] || '📦';
+    }
+
+    async function loadProduct() {
+      const id = new URLSearchParams(window.location.search).get('id');
+      if (!id) { window.location.href = '/'; return; }
+
+      try {
+        const p = await fetch(`/api/products/${id}`).then(r => r.json());
+        if (p.error) { window.location.href = '/'; return; }
+
+        document.title = `${p.name} — MoreCraze`;
+
+        // Update breadcrumb
+        document.getElementById('breadcrumb').innerHTML = `
+          <a href="/">Home</a> <span class="bc-sep">›</span>
+          <a href="/?cat=${p.category}">${p.category}</a> <span class="bc-sep">›</span>
+          <span>${p.name.substring(0, 40)}${p.name.length > 40 ? '…' : ''}</span>`;
+
+        // Render product detail
+        const inStock = p.stock > 0;
+        document.getElementById('product-detail').innerHTML = `
+          <div class="product-detail-grid fade-in">
+            <div class="product-detail-image card">
+              <img src="${p.image_url}" alt="${p.name}"
+                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"/>
+              <div class="product-img-placeholder product-detail-placeholder" style="display:none">
+                <span class="placeholder-emoji" style="font-size:6rem">${getCategoryEmoji(p.category)}</span>
+                <span class="placeholder-label">${p.category}</span>
+              </div>
+            </div>
+            <div class="product-detail-info">
+              <span class="product-cat" style="font-size:.85rem">${p.category}</span>
+              <h1 class="product-detail-title">${p.name}</h1>
+              <div class="product-detail-price">${formatPrice(p.price)}</div>
+
+              <div class="product-detail-stock ${inStock ? 'in-stock' : 'out-stock'}">
+                <span class="stock-dot"></span>
+                ${inStock ? `${p.stock} in stock` : 'Out of stock'}
+              </div>
+
+              <div class="product-detail-desc card">
+                <h3 style="margin-bottom:12px">Description</h3>
+                <p style="color:var(--text-muted);line-height:1.8">${p.description || 'No description available.'}</p>
+              </div>
+
+              <div class="product-detail-actions">
+                <button class="btn btn-primary btn-block" ${!inStock ? 'disabled' : ''} onclick="addToCart(${p.id})">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+                  Add to Cart
+                </button>
+                <a href="/cart.html" class="btn btn-secondary btn-block">View Cart</a>
+              </div>
+
+              <div class="product-detail-meta">
+                <div class="meta-item"><span class="meta-label">Category</span><a href="/?cat=${p.category}" class="meta-value">${p.category}</a></div>
+                <div class="meta-item"><span class="meta-label">Product ID</span><span class="meta-value">#${p.id}</span></div>
+                <div class="meta-item"><span class="meta-label">Shipping</span><span class="meta-value" style="color:var(--success)">Free Delivery</span></div>
+              </div>
+            </div>
+          </div>`;
+
+        // Load related products
+        const all = await fetch(`/api/products?category=${p.category}`).then(r => r.json());
+        const related = all.filter(r => r.id !== p.id).slice(0, 4);
+        if (related.length) {
+          document.getElementById('related-section').style.display = 'block';
+          document.getElementById('related-grid').innerHTML = related.map((r, i) => `
+            <div class="product-card reveal" style="transition-delay:${i * 0.1}s">
+              <a href="/product.html?id=${r.id}" class="product-img-link">
+                <div class="product-img-wrap" data-category="${r.category}">
+                  <img class="product-img" src="${r.image_url}" alt="${r.name}"
+                       onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"/>
+                  <div class="product-img-placeholder" style="display:none">
+                    <span class="placeholder-emoji">${getCategoryEmoji(r.category)}</span>
+                    <span class="placeholder-label">${r.category}</span>
+                  </div>
+                </div>
+              </a>
+              <div class="product-body">
+                <span class="product-cat">${r.category}</span>
+                <a href="/product.html?id=${r.id}" class="product-name-link"><h3 class="product-name">${r.name}</h3></a>
+                <div class="product-footer">
+                  <span class="product-price">${formatPrice(r.price)}</span>
+                  <button class="btn btn-primary btn-sm" onclick="addToCart(${r.id})">Add to Cart</button>
+                </div>
+              </div>
+            </div>`).join('');
+          initScrollReveal();
+        }
+      } catch (e) {
+        document.getElementById('product-detail').innerHTML = '<div class="empty-state"><h2>Product not found</h2><p>This product may no longer be available.</p><a href="/" class="btn btn-primary">Browse Products</a></div>';
+      }
+    }
+
+    initApp('home').then(loadProduct);
+  </script>
+</body>
+</html>

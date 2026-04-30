@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Complete your MoreCraze order with secure checkout."/>
+  <title>Checkout — MoreCraze</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+  <nav id="main-nav"></nav>
+  <div class="page-wrapper">
+    <div class="container">
+      <div class="page-header"><h1>Secure <span class="text-gradient">Checkout</span></h1></div>
+      <div class="page-content">
+        <div class="card fade-in">
+          <h3 style="margin-bottom:20px">Shipping Details</h3>
+          <form id="checkout-form">
+            <div class="form-group"><label for="address">Shipping Address</label><input type="text" id="address" required placeholder="Full address"/></div>
+            <div class="form-row">
+              <div class="form-group"><label for="city">City</label><input type="text" id="city" required placeholder="City"/></div>
+              <div class="form-group"><label for="state">State</label><input type="text" id="state" required placeholder="State"/></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label for="pincode">Pincode</label><input type="text" id="pincode" required placeholder="Pincode"/></div>
+              <div class="form-group"><label for="phone">Phone</label><input type="tel" id="phone" required placeholder="Phone number"/></div>
+            </div>
+            <h3 style="margin:28px 0 16px">Payment Method</h3>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <label class="card" style="cursor:pointer;padding:16px 24px;flex:1;min-width:140px;text-align:center">
+                <input type="radio" name="payment" value="COD" checked style="margin-right:8px"/>Cash on Delivery
+              </label>
+              <label class="card" style="cursor:pointer;padding:16px 24px;flex:1;min-width:140px;text-align:center;opacity:.5" title="Coming soon">
+                <input type="radio" name="payment" value="Card" disabled style="margin-right:8px"/>💳 Card (Soon)
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="btn-order" style="margin-top:28px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a1 1 0 01-1 1h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+              Place Order
+            </button>
+          </form>
+        </div>
+        <div>
+          <div class="card cart-summary fade-in" style="animation-delay:.15s" id="order-summary">
+            <h3 style="margin-bottom:16px">Order Review</h3>
+            <p style="color:var(--text-dim)">Loading cart...</p>
+          </div>
+        </div>
+      </div>
+      <!-- Success overlay -->
+      <div id="success-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:none;align-items:center;justify-content:center">
+        <div class="card fade-in" style="text-align:center;max-width:400px;padding:48px">
+          <div style="font-size:4rem;margin-bottom:16px">🎉</div>
+          <h2>Order Placed!</h2>
+          <p style="color:var(--text-muted);margin:12px 0 24px">Your order has been confirmed. You can track it in your orders page.</p>
+          <a href="/orders.html" class="btn btn-primary">View Orders</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer id="main-footer"></footer>
+  <script src="/app.js"></script>
+  <script>
+    async function loadSummary() {
+      const u = await checkAuth();
+      if (!u) { showToast('Please login to checkout', 'warning'); setTimeout(() => window.location.href = '/login.html', 1000); return; }
+      // Pre-fill from profile
+      ['address','city','state','pincode','phone'].forEach(f => { if (u[f]) document.getElementById(f).value = u[f]; });
+      try {
+        const items = await api('/cart');
+        if (!items.length) { showToast('Cart is empty', 'warning'); window.location.href = '/'; return; }
+        const sub = items.reduce((s, i) => s + i.price * i.quantity, 0);
+        const tax = sub * 0.08;
+        document.getElementById('order-summary').innerHTML = `
+          <h3 style="margin-bottom:16px">Order Review</h3>
+          ${items.map(i => `<div class="summary-row" style="font-size:.88rem"><span>${i.name.substring(0,30)}… × ${i.quantity}</span><span>${formatPrice(i.price * i.quantity)}</span></div>`).join('')}
+          <div class="summary-row"><span>Tax (8%)</span><span>${formatPrice(tax)}</span></div>
+          <div class="summary-row"><span>Shipping</span><span style="color:var(--success)">Free</span></div>
+          <div class="summary-row total"><span>Total</span><span style="color:var(--accent)">${formatPrice(sub + tax)}</span></div>`;
+      } catch {}
+    }
+    initApp('checkout').then(loadSummary);
+
+    document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-order');
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Placing order...';
+      try {
+        const body = {};
+        ['address','city','state','pincode','phone'].forEach(f => body[f] = document.getElementById(f).value);
+        body.payment_method = document.querySelector('input[name=payment]:checked').value;
+        const res = await api('/orders', { method: 'POST', body: JSON.stringify(body) });
+        if (res.success) {
+          const overlay = document.getElementById('success-overlay');
+          overlay.style.display = 'flex';
+        } else { showToast(res.error || 'Order failed', 'error'); }
+      } catch (err) { showToast(err.error || 'Please login first', 'error'); }
+      finally { btn.disabled = false; btn.innerHTML = 'Place Order'; }
+    });
+  </script>
+</body>
+</html>

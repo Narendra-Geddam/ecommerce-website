@@ -1,0 +1,206 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+
+---
+# Note: Install Istio separately with:
+# curl -L https://istio.io/downloadIstio | sh -
+# cd istio-1.x.x
+# ./bin/istioctl install --set profile=demo -y
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecommerce-backend
+  namespace: prod-ecommerce
+  labels:
+    app: ecommerce-backend
+spec:
+  selector:
+    app: ecommerce-backend
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+      protocol: TCP
+
+---
+# Destination Rule for canary
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ecommerce-backend
+  namespace: prod-ecommerce
+spec:
+  host: ecommerce-backend
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+    loadBalancer:
+      simple: ROUND_ROBIN
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+  subsets:
+    - name: stable
+      labels:
+        version: stable
+    - name: canary
+      labels:
+        version: canary
+
+---
+# Virtual Service for traffic routing (canary strategy)
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ecommerce-backend
+  namespace: prod-ecommerce
+spec:
+  hosts:
+    - ecommerce-backend
+  http:
+    # Canary rollout stages
+    # Stage 1: 5% to canary
+    - match:
+        - uri:
+            prefix: /api/health
+      route:
+        - destination:
+            host: ecommerce-backend
+            subset: stable
+          weight: 100
+
+    # Stage 2: Gradual traffic shift
+    - route:
+        - destination:
+            host: ecommerce-backend
+            subset: stable
+          weight: 95
+        - destination:
+            host: ecommerce-backend
+            subset: canary
+          weight: 5
+      timeout: 2s
+      retries:
+        attempts: 3
+        perTryTimeout: 1s
+
+---
+# Pod Disruption Budget for canary deployment
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ecommerce-backend-pdb
+  namespace: prod-ecommerce
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: ecommerce-backend
+
+---
+# Network Policy for canary pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ecommerce-backend-canary
+  namespace: prod-ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: ecommerce-backend
+      version: canary
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: prod-ecommerce
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+      ports:
+        - protocol: TCP
+          port: 5000
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 5432  # PostgreSQL
+        - protocol: TCP
+          port: 443   # HTTPS
+        - protocol: UDP
+          port: 53    # DNS
+    - to:
+        - podSelector:
+            matchLabels:
+              app: ecommerce-backend
+      ports:
+        - protocol: TCP
+          port: 5000
+
+---
+# Request Authentication (mTLS)
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: ecommerce-backend
+  namespace: prod-ecommerce
+spec:
+  jwtRules:
+    - issuer: "https://your-auth-provider.com"
+      jwksUri: "https://your-auth-provider.com/.well-known/jwks.json"
+
+---
+# Authorization Policy
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: ecommerce-backend
+  namespace: prod-ecommerce
+spec:
+  selector:
+    matchLabels:
+      app: ecommerce-backend
+  rules:
+    # Allow health checks without authentication
+    - to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/health", "/ready", "/live"]
+    # Allow authenticated traffic to API
+    - from:
+        - source:
+            principals: ["cluster.local/ns/prod-ecommerce/sa/frontend"]
+      to:
+        - operation:
+            methods: ["GET", "POST", "PUT"]
+            paths: ["/api/*"]
+
+---
+# Telemetry (to export metrics to Prometheus)
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: ecommerce-backend
+  namespace: prod-ecommerce
+spec:
+  metrics:
+    - providers:
+        - name: prometheus
+      dimensions:
+        - request.host
+        - request.path
+        - response.code
+        - request.method

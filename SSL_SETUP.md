@@ -27,7 +27,7 @@ aws acm describe-certificate --certificate-arn <ARN> --region eu-north-1 | grep 
 
 ## Step 3: Update Helm Values
 
-Edit `helm-chart/values.yaml` - update the certificate ARN:
+Edit `infra/kubernetes/helm/values.yaml` - update the certificate ARN:
 
 ```yaml
 domain:
@@ -35,15 +35,15 @@ domain:
   certificateArn: "arn:aws:acm:eu-north-1:593067253640:certificate/abc123..."
 ```
 
-Also update `helm-chart/values-prod.yaml` with same certificate ARN.
+Also update `infra/kubernetes/helm/values-prod.yaml` with same certificate ARN.
 
 ## Step 4: Deploy with Helm
 
 ```bash
-helm upgrade ecommerce ./helm-chart \
+helm upgrade ecommerce ./infra/kubernetes/helm \
   -n prod-ecommerce \
-  -f helm-chart/values.yaml \
-  -f helm-chart/values-prod.yaml
+  -f infra/kubernetes/helm/values.yaml \
+  -f infra/kubernetes/helm/values-prod.yaml
 ```
 
 Ingress will automatically update with HTTPS listener.

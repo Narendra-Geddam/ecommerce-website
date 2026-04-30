@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flagger-system
+
+---
+# Install Flagger:
+# helm repo add flagger https://flagger.app
+# helm install flagger flagger/flagger \
+#   --namespace flagger-system \
+#   --set prometheus.install=true \
+#   --set metricsServer.install=true
+
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: ecommerce-canary
+  namespace: prod-ecommerce
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ecommerce-backend
+
+  # Define the service that will be updated
+  service:
+    name: ecommerce-backend
+    port: 5000
+
+  # Analysis configuration
+  analysis:
+    # Max time in seconds for the canary analysis to run
+    interval: 1m
+    # Max number of failed checks before rollback
+    threshold: 5
+    # min success rate 99%
+    metrics:
+      - name: error_rate
+        thresholdRange:
+          max: 1
+        interval: 1m
+      - name: latency
+        thresholdRange:
+          max: 500
+        interval: 1m
+    webhooks:
+      - name: smoke-tests
+        url: http://flagger-loadtester/
+        timeout: 5s
+        metadata:
+          type: bash
+          cmd: "curl -sd 'test' http://ecommerce-backend-canary/api/health"
+
+  # Canary strategy
+  skipAnalysis: false
+  
+  # Progressive traffic shift
+  # Start with 5% of traffic to canary
+  # Increase by 5% every minute
+  # Total canary duration: ~20 minutes
+  stepWeight: 5
+  maxWeight: 100
+  stepWeightPromotion: 40
+
+---
+# Optional: LoadTester for smoke tests
+apiVersion: v1
+kind: Service
+metadata:
+  name: flagger-loadtester
+  namespace: prod-ecommerce
+spec:
+  selector:
+    app: flagger-loadtester
+  ports:
+    - port: 80
+      targetPort: 8080
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flagger-loadtester
+  namespace: prod-ecommerce
+  labels:
+    app: flagger-loadtester
+spec:
+  selector:
+    matchLabels:
+      app: flagger-loadtester
+  template:
+    metadata:
+      labels:
+        app: flagger-loadtester
+    spec:
+      containers:
+        - name: load-tester
+          image: ghcr.io/fluxcd/flagger-loadtester:0.27.0
+          ports:
+            - containerPort: 8080
+              name: http
+          command:
+            - ./flagger-loadtester
+            - -port=8080
+            - -log-level=info
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

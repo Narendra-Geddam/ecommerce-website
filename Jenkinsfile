@@ -7,7 +7,7 @@ pipeline {
         DOCKER_HUB_PASSWORD = "${DOCKER_HUB_CREDS_PSW}"
         GIT_BRANCH = "${GIT_BRANCH ?: 'main'}"
         HELM_NAMESPACE = 'default'
-        HELM_VALUES_FILE = 'helm-chart/values.yaml'
+        HELM_VALUES_FILE = 'infra/kubernetes/helm/values.yaml'
         IMAGE_TAG = "${BUILD_NUMBER}"
         PRESENTATION_IMAGE = "${DOCKER_HUB_USER}/ecommerce-presentation:${IMAGE_TAG}"
         APPLICATION_IMAGE = "${DOCKER_HUB_USER}/ecommerce-application:${IMAGE_TAG}"
@@ -69,7 +69,7 @@ pipeline {
                     cp ${HELM_VALUES_FILE} ${HELM_VALUES_FILE}.backup
                     sed -i "s|repository: .*ecommerce-presentation|repository: ${DOCKER_HUB_USER}/ecommerce-presentation|g" ${HELM_VALUES_FILE}
                     sed -i "s|tag: .*|tag: \"${IMAGE_TAG}\"|g" ${HELM_VALUES_FILE}
-                    helm lint ./helm-chart || true
+                    helm lint ./infra/kubernetes/helm || true
                     echo "📝 Helm values updated with image tag ${IMAGE_TAG}"
                 '''
             }

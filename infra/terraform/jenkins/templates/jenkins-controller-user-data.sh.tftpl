@@ -1,0 +1,225 @@
+#!/bin/bash
+# Jenkins Controller Bootstrap - Ubuntu 22.04 LTS
+# NOTE: Do NOT use set -e; individual failures must not prevent Jenkins from starting.
+set -uo pipefail
+
+exec > >(tee /var/log/jenkins-controller-bootstrap.log) 2>&1
+
+echo "=========================================="
+echo "[INFO] Jenkins Controller Bootstrap Start"
+echo "=========================================="
+echo "[INFO] Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# ── 1. System packages ───────────────────────────────────────────────
+echo "[INFO] Updating packages"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+
+echo "[INFO] Installing Java 17 (LTS – Jenkins recommended)"
+apt-get install -y fontconfig openjdk-17-jre
+
+echo "[INFO] Verifying Java installation"
+java -version
+
+echo "[INFO] Installing other dependencies"
+apt-get install -y git curl wget unzip docker.io jq apt-transport-https ca-certificates gnupg lsb-release
+
+systemctl enable docker
+systemctl start docker
+usermod -aG docker ubuntu
+
+# ── 2. Install Jenkins LTS ───────────────────────────────────────────
+echo "[INFO] Adding Jenkins LTS repository"
+mkdir -p /etc/apt/keyrings
+wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] \
+  https://pkg.jenkins.io/debian-stable binary/" \
+  | tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+apt-get update -y
+echo "[INFO] Installing Jenkins LTS"
+apt-get install -y jenkins
+
+# Allow jenkins user to use docker
+usermod -aG docker jenkins
+
+echo "[INFO] Stopping Jenkins before configuration"
+systemctl stop jenkins || true
+
+# ── 3. Install plugins via jenkins-plugin-cli JAR ─────────────────────
+# The Debian package doesn't always ship jenkins-plugin-cli as a binary.
+# Download the standalone JAR which is guaranteed to work.
+PLUGIN_CLI_VERSION="2.13.2"
+PLUGIN_CLI_JAR="/tmp/jenkins-plugin-manager.jar"
+echo "[INFO] Downloading jenkins-plugin-manager $${PLUGIN_CLI_VERSION}"
+wget -q -O "$PLUGIN_CLI_JAR" \
+  "https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/$${PLUGIN_CLI_VERSION}/jenkins-plugin-manager-$${PLUGIN_CLI_VERSION}.jar"
+
+# Locate the WAR file
+JENKINS_WAR=""
+for candidate in /usr/share/java/jenkins.war /usr/share/jenkins/jenkins.war; do
+  [ -f "$candidate" ] && JENKINS_WAR="$candidate" && break
+done
+if [ -z "$JENKINS_WAR" ]; then
+  echo "[WARN] jenkins.war not found at expected paths; searching..."
+  JENKINS_WAR=$(find / -name "jenkins.war" -type f 2>/dev/null | head -1)
+fi
+echo "[INFO] Using WAR: $JENKINS_WAR"
+
+echo "[INFO] Installing all required Jenkins plugins"
+java -jar "$PLUGIN_CLI_JAR" \
+  --war "$JENKINS_WAR" \
+  --plugin-download-directory /var/lib/jenkins/plugins \
+  --plugins \
+    configuration-as-code \
+    workflow-aggregator \
+    pipeline-stage-view \
+    git \
+    git-parameter \
+    credentials \
+    credentials-binding \
+    plain-credentials \
+    docker-workflow \
+    docker-commons \
+    pipeline-utility-steps \
+    pipeline-build-step \
+    ssh-slaves \
+    ssh-credentials \
+    ec2-fleet \
+    matrix-auth \
+    junit \
+    slack \
+    kubernetes-cli \
+    ws-cleanup \
+    timestamper \
+    ansicolor \
+    antisamy-markup-formatter \
+    authorize-project \
+    build-timeout \
+    cloudbees-folder \
+    email-ext \
+    mailer \
+    ldap \
+    pam-auth \
+    role-strategy
+
+echo "[INFO] Plugins installed successfully"
+
+# ── 4. Admin user via Groovy init (Terraform vars expand here) ───────
+echo "[INFO] Configuring Jenkins admin user and security"
+mkdir -p /var/lib/jenkins/init.groovy.d
+mkdir -p /var/lib/jenkins/casc_configs
+
+cat > /var/lib/jenkins/init.groovy.d/01-admin-user.groovy <<EOF
+import jenkins.model.*
+import hudson.security.*
+
+def instance = Jenkins.getInstance()
+def hudsonRealm = new HudsonPrivateSecurityRealm(false)
+if (hudsonRealm.getUser("${jenkins_admin_username}") == null) {
+  hudsonRealm.createAccount("${jenkins_admin_username}", "${jenkins_admin_password}")
+}
+instance.setSecurityRealm(hudsonRealm)
+
+def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
+strategy.setAllowAnonymousRead(false)
+instance.setAuthorizationStrategy(strategy)
+instance.save()
+EOF
+
+# ── 5. Resolve the public hostname at runtime for JCasc ──────────────
+# IMDSv2 token-based metadata access
+IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 60" 2>/dev/null || true)
+if [ -n "$IMDS_TOKEN" ]; then
+  PUBLIC_HOSTNAME=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" \
+    http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || true)
+fi
+if [ -z "$${PUBLIC_HOSTNAME:-}" ]; then
+  PUBLIC_HOSTNAME=$(hostname -f)
+fi
+echo "[INFO] Resolved Jenkins URL hostname: $PUBLIC_HOSTNAME"
+
+# ── 6. JCasc configuration (Terraform vars + runtime hostname) ───────
+cat > /var/lib/jenkins/casc_configs/jenkins.yaml <<EOF
+jenkins:
+  systemMessage: "Jenkins Controller – fully automated with CasC + EC2 Fleet agents."
+  numExecutors: 0
+  mode: EXCLUSIVE
+  remotingSecurity:
+    enabled: true
+  disableRememberMe: false
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${jenkins_admin_username}"
+          password: "${jenkins_admin_password}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: false
+  slaveAgentPort: 50000
+
+tool:
+  git:
+    installations:
+      - name: "Default"
+        home: "git"
+
+unclassified:
+  location:
+    url: "http://$PUBLIC_HOSTNAME:8080/"
+    adminAddress: "jenkins-admin@example.com"
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "JENKINS_AGENT_ASG"
+            value: "${jenkins_agent_asg_name}"
+          - key: "AWS_DEFAULT_REGION"
+            value: "${aws_region}"
+          - key: "JENKINS_AGENT_MAX_SIZE"
+            value: "${jenkins_agent_max_size}"
+  buildDiscarders:
+    configuredBuildDiscarders:
+      - "jobBuildDiscarder"
+EOF
+
+# ── 7. Systemd overrides ─────────────────────────────────────────────
+echo "[INFO] Configuring Jenkins systemd overrides"
+mkdir -p /etc/systemd/system/jenkins.service.d/
+cat > /etc/systemd/system/jenkins.service.d/override.conf <<'SYSD'
+[Service]
+Environment="CASC_JENKINS_CONFIG=/var/lib/jenkins/casc_configs/jenkins.yaml"
+Environment="JAVA_OPTS=-Djenkins.install.runSetupWizard=false -Dhudson.model.DownloadService.noSignatureCheck=true"
+SYSD
+
+# ── 8. Permissions & start ───────────────────────────────────────────
+chown -R jenkins:jenkins /var/lib/jenkins
+systemctl daemon-reload
+systemctl enable jenkins
+systemctl start jenkins
+
+# ── 9. Wait for Jenkins to become healthy ─────────────────────────────
+echo "[INFO] Waiting for Jenkins to start (up to 3 minutes)..."
+for i in $(seq 1 36); do
+  HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:8080/login 2>/dev/null || echo "000")
+  if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "403" ]; then
+    echo "[INFO] Jenkins is UP (HTTP $HTTP_CODE) after ~$((i*5)) seconds"
+    break
+  fi
+  echo "[INFO] Attempt $i/36 – HTTP $HTTP_CODE – retrying in 5s..."
+  sleep 5
+done
+
+echo "=========================================="
+echo "[INFO] Jenkins controller bootstrap DONE!"
+echo "[INFO] All plugins pre-installed."
+echo "[INFO] URL: http://$PUBLIC_HOSTNAME:8080"
+echo "[INFO] Admin: ${jenkins_admin_username}"
+echo "=========================================="

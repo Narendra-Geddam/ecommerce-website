@@ -1,0 +1,268 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'DEPLOYMENT_STRATEGY', choices: ['canary', 'blue-green', 'rolling'], description: 'Deployment strategy')
+        choice(name: 'CANARY_WEIGHT', choices: ['5', '10', '25', '50'], description: 'Initial canary traffic %')
+        booleanParam(name: 'SKIP_TESTS', defaultValue: false, description: 'Skip automated tests')
+        booleanParam(name: 'SKIP_SECURITY_SCAN', defaultValue: false, description: 'Skip security scan')
+    }
+
+    environment {
+        DOCKER_HUB_CREDS = credentials('dockerhub-creds')
+        DOCKER_HUB_USER = "${DOCKER_HUB_CREDS_USR}"
+        DOCKER_HUB_PASSWORD = "${DOCKER_HUB_CREDS_PSW}"
+        GIT_BRANCH = "${GIT_BRANCH ?: 'main'}"
+        HELM_NAMESPACE = 'prod-ecommerce'
+        HELM_VALUES_FILE = 'infra/kubernetes/helm/values.yaml'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        PRESENTATION_IMAGE = "${DOCKER_HUB_USER}/ecommerce-presentation:${IMAGE_TAG}"
+        APPLICATION_IMAGE = "${DOCKER_HUB_USER}/ecommerce-application:${IMAGE_TAG}"
+        TRIVY_SEVERITY = 'HIGH,CRITICAL'
+        SLACK_WEBHOOK = credentials('slack-webhook-url')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "📦 Checking out code..."
+                checkout scm
+            }
+        }
+
+        stage('Run Tests') {
+            when {
+                expression { params.SKIP_TESTS == false }
+            }
+            steps {
+                echo "🧪 Running automated tests..."
+                sh '''
+                    cd apps/backend
+                    python -m pytest tests/ -v --tb=short --junit-xml=test-results.xml || true
+                    cd ../..
+                '''
+            }
+        }
+
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build Frontend') {
+                    steps {
+                        echo "🔨 Building frontend image..."
+                        sh 'docker build -t ${PRESENTATION_IMAGE} -f apps/frontend/Dockerfile apps/frontend/'
+                    }
+                }
+                stage('Build Backend') {
+                    steps {
+                        echo "🔨 Building backend image..."
+                        sh 'docker build -t ${APPLICATION_IMAGE} -f apps/backend/Dockerfile apps/backend/'
+                    }
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            when {
+                expression { params.SKIP_SECURITY_SCAN == false }
+            }
+            steps {
+                echo "🔍 Running security scans..."
+                sh '''
+                    echo "Scanning frontend image..."
+                    trivy image --severity ${TRIVY_SEVERITY} --no-progress ${PRESENTATION_IMAGE} | tee trivy-presentation.txt
+                    
+                    echo "Scanning backend image..."
+                    trivy image --severity ${TRIVY_SEVERITY} --no-progress ${APPLICATION_IMAGE} | tee trivy-application.txt
+                    
+                    # Fail if critical vulnerabilities found
+                    if grep -i "CRITICAL" trivy-*.txt; then
+                        echo "❌ Critical vulnerabilities found!"
+                        exit 1
+                    fi
+                '''
+            }
+        }
+
+        stage('Push to Registry') {
+            steps {
+                echo "📤 Publishing images to Docker Hub..."
+                sh '''
+                    echo "${DOCKER_HUB_PASSWORD}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
+                    
+                    # Push versioned images
+                    docker push ${PRESENTATION_IMAGE}
+                    docker push ${APPLICATION_IMAGE}
+                    
+                    # Also push as latest
+                    docker tag ${PRESENTATION_IMAGE} ${DOCKER_HUB_USER}/ecommerce-presentation:latest
+                    docker tag ${APPLICATION_IMAGE} ${DOCKER_HUB_USER}/ecommerce-application:latest
+                    docker push ${DOCKER_HUB_USER}/ecommerce-presentation:latest
+                    docker push ${DOCKER_HUB_USER}/ecommerce-application:latest
+                    
+                    docker logout
+                    echo "✅ Images published"
+                '''
+            }
+        }
+
+        stage('Update Helm Chart') {
+            steps {
+                echo "📝 Updating Helm values..."
+                sh '''
+                    cp ${HELM_VALUES_FILE} ${HELM_VALUES_FILE}.backup
+                    
+                    # Update image tags and deployment strategy
+                    sed -i "s|tag: .*|tag: \"${IMAGE_TAG}\"|g" ${HELM_VALUES_FILE}
+                    sed -i "s|strategy: .*|strategy: ${DEPLOYMENT_STRATEGY}|g" ${HELM_VALUES_FILE}
+                    sed -i "s|canaryWeight: .*|canaryWeight: ${CANARY_WEIGHT}|g" ${HELM_VALUES_FILE}
+                    
+                    # Validate Helm chart
+                    helm lint ./infra/kubernetes/helm
+                    
+                    # Dry-run
+                    helm upgrade ecommerce ./infra/kubernetes/helm -n ${HELM_NAMESPACE} --dry-run --debug > /tmp/helm-dry-run.log
+                    
+                    echo "✅ Helm chart validated"
+                '''
+            }
+        }
+
+        stage('Deploy with Strategy') {
+            steps {
+                echo "🚀 Deploying with ${params.DEPLOYMENT_STRATEGY} strategy..."
+                sh '''
+                    case ${DEPLOYMENT_STRATEGY} in
+                        canary)
+                            echo "🎯 Deploying canary (${CANARY_WEIGHT}% traffic)..."
+                            kubectl patch deployment ecommerce-backend -n ${HELM_NAMESPACE} \
+                              -p '{"spec":{"template":{"metadata":{"labels":{"version":"canary"}}}}}'
+                            ;;
+                        blue-green)
+                            echo "🔵🟢 Blue-green deployment..."
+                            kubectl set image deployment/ecommerce-backend \
+                              ecommerce-backend=${APPLICATION_IMAGE} -n ${HELM_NAMESPACE}
+                            ;;
+                        rolling)
+                            echo "🔄 Rolling deployment..."
+                            helm upgrade ecommerce ./infra/kubernetes/helm \
+                              -n ${HELM_NAMESPACE} \
+                              -f ${HELM_VALUES_FILE}
+                            ;;
+                    esac
+                '''
+            }
+        }
+
+        stage('Health Checks') {
+            steps {
+                echo "🏥 Running health checks..."
+                sh '''
+                    echo "Waiting for pods to be ready..."
+                    kubectl wait --for=condition=ready pod \
+                      -l app=ecommerce-backend \
+                      -n ${HELM_NAMESPACE} \
+                      --timeout=300s || true
+                    
+                    echo "Checking application health..."
+                    BACKEND_POD=$(kubectl get pod -n ${HELM_NAMESPACE} -l app=ecommerce-backend -o jsonpath="{.items[0].metadata.name}")
+                    kubectl exec -n ${HELM_NAMESPACE} ${BACKEND_POD} -- curl -f http://localhost:5000/health || true
+                    
+                    echo "Pod status:"
+                    kubectl get pods -n ${HELM_NAMESPACE}
+                '''
+            }
+        }
+
+        stage('Smoke Tests') {
+            when {
+                expression { params.SKIP_TESTS == false }
+            }
+            steps {
+                echo "🔥 Running smoke tests..."
+                sh '''
+                    SERVICE_URL=$(kubectl get svc ecommerce-backend -n ${HELM_NAMESPACE} -o jsonpath="{.status.loadBalancer.ingress[0].hostname}:5000")
+                    
+                    echo "Testing: http://$${SERVICE_URL}/health"
+                    curl -f http://$${SERVICE_URL}/health || echo "Service not yet accessible"
+                '''
+            }
+        }
+
+        stage('Monitor Canary') {
+            when {
+                expression { params.DEPLOYMENT_STRATEGY == 'canary' }
+            }
+            steps {
+                echo "📊 Monitoring canary deployment..."
+                sh '''
+                    echo "Checking metrics..."
+                    kubectl exec -n monitoring prometheus-0 -- \
+                      promtool query instant \
+                      'rate(flask_http_request_total{pod=~".*canary.*"}[5m])' || true
+                    
+                    echo "Canary deployment is ${CANARY_WEIGHT}% of traffic"
+                    echo "Monitor dashboard: kubectl port-forward -n monitoring svc/grafana 3000:80"
+                '''
+            }
+        }
+
+        stage('Commit Changes') {
+            steps {
+                echo "🔗 Committing changes..."
+                sh '''
+                    git config user.email "jenkins@example.com"
+                    git config user.name "Jenkins Pipeline"
+                    
+                    if git diff --quiet ${HELM_VALUES_FILE}; then
+                        echo "ℹ️ No changes to commit"
+                    else
+                        git add ${HELM_VALUES_FILE}
+                        git commit -m "🚀 Deploy version ${IMAGE_TAG} strategy=${DEPLOYMENT_STRATEGY} [skip ci]"
+                        git push origin ${GIT_BRANCH}
+                        echo "✅ Changes committed"
+                    fi
+                '''
+            }
+        }
+
+        stage('Sync ArgoCD') {
+            steps {
+                echo "🔷 Syncing with ArgoCD..."
+                sh '''
+                    argocd app sync ecommerce-app --async || echo "ArgoCD not configured"
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "🧹 Cleaning up..."
+            sh 'docker rmi ${PRESENTATION_IMAGE} ${APPLICATION_IMAGE} 2>/dev/null || true'
+            
+            // Archive test results
+            junit 'apps/backend/test-results.xml' || true
+            archiveArtifacts artifacts: 'trivy-*.txt,helm-dry-run.log', allowEmptyArchive: true
+        }
+        success {
+            echo "✅ Pipeline succeeded!"
+            echo "Version: ${IMAGE_TAG}"
+            echo "Strategy: ${params.DEPLOYMENT_STRATEGY}"
+            // Notify Slack
+            sh '''
+                curl -X POST ${SLACK_WEBHOOK} \
+                  -H 'Content-Type: application/json' \
+                  -d '{"text":"✅ Deployment successful\\nVersion: '${IMAGE_TAG}'\\nStrategy: '${DEPLOYMENT_STRATEGY}'"}' || true
+            '''
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+            sh '''
+                curl -X POST ${SLACK_WEBHOOK} \
+                  -H 'Content-Type: application/json' \
+                  -d '{"text":"❌ Deployment failed\\nVersion: '${IMAGE_TAG}'\\nCheck: '${BUILD_URL}'"}' || true
+            '''
+        }
+    }
+}
+

@@ -1,0 +1,8 @@
+{
+  "commands": [
+    "find / -name 'jenkins-plugin-cli*' -type f 2>/dev/null || echo CLI_NOT_FOUND",
+    "ls -la /usr/share/jenkins/ 2>/dev/null || echo NO_SHARE_DIR",
+    "ls -la /var/cache/jenkins/war/WEB-INF/lib/cli*.jar 2>/dev/null || echo NO_CLI_JAR",
+    "dpkg -L jenkins | grep -i cli || echo NO_CLI_IN_PKG"
+  ]
+}
