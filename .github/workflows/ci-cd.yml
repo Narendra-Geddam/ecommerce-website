@@ -9,9 +9,9 @@ on:
       - main
 
 env:
-  DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-  FRONTEND_IMAGE: ${{ secrets.DOCKER_HUB_USER }}/ecommerce-presentation
-  BACKEND_IMAGE: ${{ secrets.DOCKER_HUB_USER }}/ecommerce-application
+  DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER || github.repository_owner }}
+  FRONTEND_IMAGE: ${{ env.DOCKER_HUB_USER }}/ecommerce-presentation
+  BACKEND_IMAGE: ${{ env.DOCKER_HUB_USER }}/ecommerce-application
   HELM_VALUES_FILE: 3-kubernetes/helm/values.yaml
 
 jobs:
