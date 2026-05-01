@@ -1,5 +1,5 @@
 # Presentation Tier - Nginx Frontend
-FROM nginx:alpine
+FROM nginx:1.27-bookworm
 
 # Copy static files
 COPY . /usr/share/nginx/html/
