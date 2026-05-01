@@ -1,10 +1,14 @@
 # Application Tier - Flask Backend API
-FROM python:3.9-slim
+# Use a newer Python base and apply OS upgrades to reduce known CVEs
+FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-# Install curl for health checks
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Install curl for health checks and apply security updates
+RUN apt-get update \
+	&& apt-get upgrade -y \
+	&& apt-get install -y --no-install-recommends curl \
+	&& rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY requirements.txt .
