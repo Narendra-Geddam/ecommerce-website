@@ -63,7 +63,10 @@ jobs:
       - name: Resolve Docker image namespace
         shell: bash
         run: |
-          namespace="${DOCKER_HUB_USER:-${GITHUB_REPOSITORY_OWNER,,}}"
+          namespace="${DOCKER_HUB_USER,,}"
+          if [ -z "$namespace" ]; then
+            namespace="${GITHUB_REPOSITORY_OWNER,,}"
+          fi
           echo "IMAGE_NAMESPACE=${namespace}" >> "$GITHUB_ENV"
           echo "FRONTEND_IMAGE=${namespace}/ecommerce-presentation" >> "$GITHUB_ENV"
           echo "BACKEND_IMAGE=${namespace}/ecommerce-application" >> "$GITHUB_ENV"
