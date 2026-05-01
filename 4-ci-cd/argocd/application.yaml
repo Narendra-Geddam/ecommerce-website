@@ -1,0 +1,24 @@
+# application.yaml
+# This tells ArgoCD to deploy our application from Git.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecommerce-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    # Change this URL to your actual GitHub repository once you fork/clone it
+    repoURL: 'https://github.com/YOUR_GITHUB_ORG/YOUR_REPO_NAME.git'
+    path: '3-kubernetes/helm'
+    targetRevision: main
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: prod-ecommerce
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

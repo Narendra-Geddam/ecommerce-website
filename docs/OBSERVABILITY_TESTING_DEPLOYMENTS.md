@@ -14,20 +14,46 @@ This document covers the complete observability, testing, and deployment strateg
 |-----------|---------|------|-----------|
 | **Prometheus** | Metrics collection & storage | 9090 | http://prometheus:9090 |
 | **Grafana** | Dashboards & visualization | 3000 | http://grafana:3000 |
-| **Loki** | Log aggregation | 3100 | http://loki:3100 |
-| **Promtail** | Log shipper | - | DaemonSet |
+| **Loki** | Log aggregation (PLG Stack) | 3100 | http://loki:3100 |
+| **Promtail** | Log shipper (PLG Stack) | - | DaemonSet |
+| **Elasticsearch**| Log aggregation (EFK Stack) | 9200 | http://elasticsearch:9200 |
+| **Kibana** | Log visualization (EFK Stack)| 5601 | http://kibana:5601 |
+| **Fluent Bit** | Log shipper (EFK Stack) | - | DaemonSet |
 | **Jaeger** | Distributed tracing | 16686 | http://jaeger:16686 |
 
 ### Installation
 
 #### 1. Deploy Observability Stack
 
+You can easily deploy the stack using our included deployment script. The script allows you to choose between the PLG (Promtail, Loki, Grafana) stack, the EFK (Elasticsearch, Fluent Bit, Kibana) stack, or both.
+
 ```bash
-# Deploy to Kubernetes
-kubectl apply -f infra/kubernetes/observability/prometheus-config.yaml
-kubectl apply -f infra/kubernetes/observability/grafana-config.yaml
-kubectl apply -f infra/kubernetes/observability/loki-promtail-config.yaml
-kubectl apply -f infra/kubernetes/observability/jaeger-config.yaml
+# Make the script executable
+chmod +x scripts/deploy/deploy-observability.sh
+
+# Deploy PLG (Default)
+./scripts/deploy/deploy-observability.sh --stack plg
+
+# Deploy EFK
+./scripts/deploy/deploy-observability.sh --stack efk
+
+# Deploy Both
+./scripts/deploy/deploy-observability.sh --stack both
+```
+
+Alternatively, you can apply them manually:
+
+```bash
+# Base components
+kubectl apply -f 3-kubernetes/observability/prometheus-config.yaml
+kubectl apply -f 3-kubernetes/observability/grafana-config.yaml
+kubectl apply -f 3-kubernetes/observability/jaeger-config.yaml
+
+# PLG Stack
+kubectl apply -f 3-kubernetes/observability/loki-promtail-config.yaml
+
+# EFK Stack
+kubectl apply -f 3-kubernetes/observability/efk-config.yaml
 
 # Verify deployment
 kubectl get all -n monitoring
@@ -36,6 +62,7 @@ kubectl get all -n monitoring
 kubectl port-forward -n monitoring svc/prometheus 9090:9090 &
 kubectl port-forward -n monitoring svc/grafana 3000:80 &
 kubectl port-forward -n monitoring svc/jaeger 16686:16686 &
+kubectl port-forward -n monitoring svc/kibana 5601:5601 &
 ```
 
 #### 2. Configure Prometheus
@@ -97,6 +124,13 @@ increase(ecommerce_order_value_total[1h]) / increase(ecommerce_orders_total[1h])
 
 ### Logs
 
+We support two distinct log aggregation stacks: the PLG Stack (Promtail, Loki, Grafana) and the EFK Stack (Elasticsearch, Fluent Bit, Kibana).
+
+#### How Log Aggregation Works in Kubernetes
+Logs from all running containers (`stdout`/`stderr`) are captured by the kubelet and written to the host node's filesystem at `/var/log/containers/*.log`. 
+A log shipper (Promtail or Fluent Bit) runs as a `DaemonSet`—ensuring one instance per node—and mounts this directory in read-only mode. It reads the raw log lines, extracts Kubernetes metadata (namespace, pod name, etc.), and forwards them to the storage backend (Loki or Elasticsearch).
+
+#### PLG Stack (Loki & Promtail)
 Logs are collected by Promtail and stored in Loki. Access via Grafana's Loki datasource.
 
 ```
@@ -108,6 +142,21 @@ Logs are collected by Promtail and stored in Loki. Access via Grafana's Loki dat
 
 # Show backend errors
 {pod=~"ecommerce-backend.*"} | json level="ERROR" | pattern "<_> <_>"
+```
+
+#### EFK Stack (Elasticsearch, Fluent Bit, Kibana)
+Logs are collected by Fluent Bit and stored in Elasticsearch. Access via Kibana.
+
+1. Port-forward Kibana (`kubectl port-forward -n monitoring svc/kibana 5601:5601`)
+2. Go to `http://localhost:5601`
+3. Navigate to **Stack Management** > **Data Views** (or Index Patterns)
+4. Create a data view matching `fluent-bit*`
+5. Navigate to **Discover** to query your logs using KQL (Kibana Query Language).
+
+```kql
+# Example KQL queries
+kubernetes.labels.app: "ecommerce-backend"
+log: "ERROR"
 ```
 
 ### Distributed Tracing
@@ -133,7 +182,7 @@ curl http://localhost:16686  # Jaeger UI
 #### 1. Install Test Dependencies
 
 ```bash
-cd apps/backend
+cd 1-apps/backend
 pip install -r requirements-test.txt
 ```
 
@@ -163,7 +212,7 @@ pytest tests/test_api.py
 pytest tests/test_api.py::TestProductAPI::test_get_products
 
 # Run with coverage
-pytest --cov=apps/backend --cov-report=html
+pytest --cov=1-apps/backend --cov-report=html
 
 # Run with verbosity
 pytest -vv --tb=long
@@ -210,7 +259,7 @@ Target: **>80% code coverage**
 
 ```bash
 # Generate coverage report
-pytest --cov=apps/backend --cov-report=html
+pytest --cov=1-apps/backend --cov-report=html
 
 # View report
 open htmlcov/index.html
@@ -418,7 +467,7 @@ git push origin main
 kubectl rollout undo deployment/ecommerce-backend -n prod-ecommerce
 
 # Option 3: Restore from backup
-helm upgrade ecommerce ./infra/kubernetes/helm \
+helm upgrade ecommerce ./3-kubernetes/helm \
   --values helm-values-backup.yaml \
   -n prod-ecommerce
 ```

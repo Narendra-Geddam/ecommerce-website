@@ -4,7 +4,7 @@ services:
   # Presentation Tier - Nginx Frontend
   presentation:
     build:
-      context: ./apps/frontend
+      context: ./1-apps/frontend
       dockerfile: Dockerfile
     ports:
       - "80:80"
@@ -27,7 +27,7 @@ services:
   # Application Tier - Flask Backend API
   application:
     build:
-      context: ./apps/backend
+      context: ./1-apps/backend
       dockerfile: Dockerfile
     ports:
       - "5000:5000"

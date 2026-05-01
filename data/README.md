@@ -398,7 +398,7 @@ ON CONFLICT (id) DO UPDATE SET ...;
 
 ## Links
 
-- **Backend README**: [apps/backend/README.md](../apps/backend/README.md)
+- **Backend README**: [1-apps/backend/README.md](../1-apps/backend/README.md)
 - **Main Guide**: [README.md](../README.md)
-- **Helm Deployment**: [infra/kubernetes/helm/README.md](../infra/kubernetes/helm/README.md)
-- **K8s Reference**: [infra/kubernetes/base/README.md](../infra/kubernetes/base/README.md)
+- **Helm Deployment**: [3-kubernetes/helm/README.md](../3-kubernetes/helm/README.md)
+- **K8s Reference**: [3-kubernetes/base/README.md](../3-kubernetes/base/README.md)

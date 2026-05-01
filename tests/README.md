@@ -419,6 +419,6 @@ pytest tests/
 
 ## Links
 
-- **Backend README**: [apps/backend/README.md](../apps/backend/README.md)
+- **Backend README**: [1-apps/backend/README.md](../1-apps/backend/README.md)
 - **Main Guide**: [README.md](../README.md)
 - **Pytest Docs**: https://docs.pytest.org/

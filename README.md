@@ -25,19 +25,64 @@
 
 ## 📋 Table of Contents
 
-1. [Quick Start](#quick-start)
-2. [Helm Deployment (Recommended)](#helm-deployment-recommended)
-3. [Architecture Diagrams (SVG)](#architecture-diagrams-svg)
-4. [Architecture Overview](#architecture-overview)
-5. [Prerequisites](#prerequisites)
-6. [Project Structure](#project-structure)
-7. [Terraform - Secrets & Parameters](#terraform---secrets--parameters)
-8. [External Secrets Integration](#external-secrets-integration)
-9. [IRSA Setup](#irsa-setup)
-10. [Deployment Methods](#deployment-methods)
-11. [Troubleshooting](#troubleshooting)
-12. [AWS CLI Commands Reference](#aws-cli-commands-reference)
-13. [Cleanup & Destruction](#cleanup--destruction)
+1. [🗺️ The Learning Curriculum (Start Here!)](#️-the-learning-curriculum-start-here)
+2. [Quick Start](#quick-start)
+3. [Helm Deployment (Recommended)](#helm-deployment-recommended)
+4. [Architecture Diagrams (SVG)](#architecture-diagrams-svg)
+5. [Architecture Overview](#architecture-overview)
+6. [Prerequisites](#prerequisites)
+7. [Project Structure](#project-structure)
+8. [Observability Learning Labs (iximiuz)](#observability-learning-labs-iximiuz)
+9. [Terraform - Secrets & Parameters](#terraform---secrets--parameters)
+10. [External Secrets Integration](#external-secrets-integration)
+11. [IRSA Setup](#irsa-setup)
+12. [Deployment Methods](#deployment-methods)
+13. [Troubleshooting](#troubleshooting)
+14. [AWS CLI Commands Reference](#aws-cli-commands-reference)
+15. [Cleanup & Destruction](#cleanup--destruction)
+
+---
+
+## 🗺️ The Learning Curriculum (Start Here!)
+
+Welcome to the ultimate DevOps learning repository! This isn't just a dummy application—it's a full **"Production Simulator"** designed to take you from running a basic application locally to deploying an enterprise-grade, observable Kubernetes cluster on AWS.
+
+This repository is designed to be learned in phases. Follow this roadmap to build your skills step-by-step:
+
+### Phase 1: Application & Containerization Basics
+- **Goal:** Understand the 3-tier architecture.
+- **Where to look:** The root `docker-compose.yml` and the `1-apps/` directory.
+- **Action:** Run the app locally to see how Nginx, Flask, and Postgres interact.
+  ```bash
+  docker compose up -d
+  curl http://localhost/health
+  ```
+
+### Phase 2: Observability Fundamentals (The Labs)
+- **Goal:** Learn how to capture logs and metrics before introducing Kubernetes complexity.
+- **Where to look:** The `2-labs/` directory.
+- **Action:** Use [iximiuz Labs](https://labs.iximiuz.com/) to complete the observability modules.
+  - `2-labs/1-elk-docker/`: Learn basic log scraping with Fluent Bit & ELK.
+  - `2-labs/2-prom-grafana-docker/`: Learn metrics scraping with Prometheus.
+  - `2-labs/3-plg-k8s/`: Introduction to K8s logging with Promtail/Loki.
+  - `2-labs/4-efk-k8s/`: Enterprise K8s logging with Fluent Bit/Elasticsearch.
+
+### Phase 3: Kubernetes Fundamentals
+- **Goal:** Graduate from Docker Compose to enterprise container orchestration.
+- **Where to look:** `3-kubernetes/`
+- **Action:** Deploy the app using standard Kubernetes manifests (`base/`) and then learn how to package it for production using Helm charts (`helm/`).
+
+### Phase 4: CI/CD Pipeline Automation
+- **Goal:** Automate testing and deployment.
+- **Where to look:** The `4-ci-cd/jenkins/` folder and the root `Jenkinsfile`.
+- **Action:** Read the `Jenkinsfile` to understand how the code is tested, built, and pushed automatically.
+
+### Phase 5: Infrastructure as Code (AWS & Terraform)
+- **Goal:** Provision real-world cloud resources.
+- **Where to look:** `5-terraform/`
+- **Action:** Learn how to provision AWS Secrets Manager, Parameter Store, and RDS using Terraform.
+
+*(For detailed technical documentation on how to deploy these phases, see the sections below).*
 
 ---
 
@@ -73,13 +118,13 @@ These diagrams are stored as SVG files for long-term reuse and easy updates.
 
 ```powershell
 # 1. Deploy Terraform secrets (AWS credentials & parameters)
-cd infra/terraform
+cd 5-terraform
 terraform init
 terraform apply
 
 # 2. Deploy entire application using Helm
 cd ../..
-helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce --create-namespace
+helm install ecommerce ./3-kubernetes/helm -n prod-ecommerce --create-namespace
 
 # 3. Verify deployment
 kubectl get all -n prod-ecommerce
@@ -129,10 +174,10 @@ helm version
 cd c:\Users\don81\OneDrive\Desktop\demo
 
 # Dry-run to preview
-helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce --create-namespace --dry-run
+helm install ecommerce ./3-kubernetes/helm -n prod-ecommerce --create-namespace --dry-run
 
 # Install
-helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce --create-namespace
+helm install ecommerce ./3-kubernetes/helm -n prod-ecommerce --create-namespace
 
 # Verify
 helm list -n prod-ecommerce
@@ -143,10 +188,10 @@ helm status ecommerce -n prod-ecommerce
 
 ```powershell
 # Edit values
-notepad infra/kubernetes/helm/values.yaml
+notepad 3-kubernetes/helm/values.yaml
 
 # Upgrade
-helm upgrade ecommerce ./infra/kubernetes/helm -n prod-ecommerce
+helm upgrade ecommerce ./3-kubernetes/helm -n prod-ecommerce
 
 # Rollback if needed
 helm rollback ecommerce 1 -n prod-ecommerce
@@ -156,13 +201,13 @@ helm rollback ecommerce 1 -n prod-ecommerce
 
 ```powershell
 # Override specific values on command line
-helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce \
+helm install ecommerce ./3-kubernetes/helm -n prod-ecommerce \
   --set application.flask.replicas=5 \
   --set application.nginx.replicas=3 \
   --set database.storage=50Gi
 
 # Or use custom values file
-helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce \
+helm install ecommerce ./3-kubernetes/helm -n prod-ecommerce \
   -f custom-values.yaml
 ```
 
@@ -170,7 +215,7 @@ helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce \
 
 ```powershell
 # Template rendering (see what will be deployed)
-helm template ecommerce ./infra/kubernetes/helm -n prod-ecommerce
+helm template ecommerce ./3-kubernetes/helm -n prod-ecommerce
 
 # Get values
 helm get values ecommerce -n prod-ecommerce
@@ -267,7 +312,7 @@ kubectl delete namespace prod-ecommerce
 
 ```
 e-commerce/
-├── apps/                               # Application source code
+├── 1-apps/                               # Application source code
 │   ├── backend/                         # Flask backend API
 │   │   ├── app.py
 │   │   ├── requirements.txt
@@ -299,7 +344,7 @@ e-commerce/
 │       ├── parameters.tf
 │       └── outputs.tf
 │
-├── ci-cd/                              # CI/CD Pipeline
+├── 4-ci-cd/                              # CI/CD Pipeline
 │   └── jenkins/
 │       ├── Jenkinsfile
 │       └── docker-compose.yml
@@ -317,13 +362,41 @@ e-commerce/
 ```
 
 **Legend:**
-- ⭐ **infra/kubernetes/helm/** - Use for deployment (Kubernetes package management)
-- 📚 **infra/kubernetes/base/** - Reference learning (individual K8s manifests)
-- 🏗️ **infra/terraform/** - AWS infrastructure (secrets & parameters)
+- ⭐ **3-kubernetes/helm/** - Use for deployment (Kubernetes package management)
+- ⭐ **3-kubernetes/helm/ - Use for deployment (Kubernetes package management)
+- 📚 **3-kubernetes/base/ - Reference learning (individual K8s manifests)
+- 🏗️ **5-terraform/ - AWS infrastructure (secrets & parameters)
+
+---
+
+## Observability Learning Labs (iximiuz)
+
+This repository functions as a "production simulator" specifically optimized for the [iximiuz Labs](https://labs.iximiuz.com/) platform. It contains a suite of modular environments so you can learn log aggregation and metrics without a heavy local setup.
+
+### Available Labs
+You can easily switch between different learning environments using the master setup script:
+
+```powershell
+chmod +x scripts/setup/learning-lab.sh
+./scripts/setup/learning-lab.sh
+```
+
+**The script provides 5 learning paths:**
+1. **Base App:** Just the application via Docker Compose.
+2. **Local ELK:** Docker Compose setup with Elasticsearch, Kibana, and Fluent Bit (mounting `/var/lib/docker/containers`).
+3. **Local Prometheus:** Docker Compose setup with Prometheus and Grafana.
+4. **K8s PLG Stack:** Kubernetes setup with Promtail, Loki, and Grafana.
+5. **K8s EFK Stack:** Kubernetes setup with Elasticsearch, Fluent Bit, and Kibana.
+
+For complete details on exposing ports inside the iximiuz playground and architectural instructions, see the dedicated [LEARNING_LABS.md](docs/LEARNING_LABS.md) and [IXIMIUZ_PLAN.md](2-labs/IXIMIUZ_PLAN.md) documents.
 
 ---
 
 ## Quick Start (Legacy - kubectl apply)
+
+### Overview
+
+Terraform manages all AWS secrets and parameters in **Infrastructure as Code**.
 
 Use **Helm instead** (see section above), but if you prefer manual kubectl:
 
@@ -512,7 +585,7 @@ kubectl get serviceaccount ecommerce-sa -n prod-ecommerce -o yaml
 
 ```powershell
 # Deploy
-helm install ecommerce ./infra/kubernetes/helm -n prod-ecommerce --create-namespace
+helm install ecommerce ./3-kubernetes/helm -n prod-ecommerce --create-namespace
 
 # Deploy Terraform secrets first
 cd terraform

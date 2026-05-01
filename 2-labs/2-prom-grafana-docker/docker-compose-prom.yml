@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./2-labs/2-prom-grafana-docker/prometheus-local.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - ecommerce-network
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./2-labs/2-prom-grafana-docker/grafana-datasources-local.yml:/etc/grafana/provisioning/datasources/datasources.yaml
+    networks:
+      - ecommerce-network
+
+networks:
+  ecommerce-network:
+    external: true
