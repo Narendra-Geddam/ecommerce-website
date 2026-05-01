@@ -10,8 +10,6 @@ on:
 
 env:
   DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER || github.repository_owner }}
-  FRONTEND_IMAGE: ${{ github.repository_owner }}/ecommerce-presentation
-  BACKEND_IMAGE: ${{ github.repository_owner }}/ecommerce-application
   HELM_VALUES_FILE: 3-kubernetes/helm/values.yaml
 
 jobs:
@@ -61,6 +59,14 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Resolve Docker image namespace
+        shell: bash
+        run: |
+          namespace="${DOCKER_HUB_USER:-${GITHUB_REPOSITORY_OWNER,,}}"
+          echo "IMAGE_NAMESPACE=${namespace}" >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=${namespace}/ecommerce-presentation" >> "$GITHUB_ENV"
+          echo "BACKEND_IMAGE=${namespace}/ecommerce-application" >> "$GITHUB_ENV"
 
       - name: Build Frontend Image
         run: docker build -t ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} -f 1-apps/frontend/Dockerfile 1-apps/frontend/
