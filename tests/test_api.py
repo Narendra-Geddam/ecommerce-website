@@ -1,152 +1,136 @@
-"""
-API endpoint tests.
-"""
-
-import pytest
-import json
+"""API endpoint tests."""
 
 
 class TestProductAPI:
-    """Product endpoint tests"""
+    """Product endpoint tests."""
 
     def test_get_products(self, client):
-        """Test fetching all products"""
         response = client.get('/products')
-        assert response.status_code in [200, 404]  # 404 if no products yet
-
-    def test_get_product_by_id(self, client, sample_product):
-        """Test fetching single product"""
-        product_id = sample_product['id']
-        response = client.get(f'/products/{product_id}')
-        assert response.status_code in [200, 404]
-
-    def test_get_categories(self, client):
-        """Test fetching product categories"""
-        response = client.get('/categories')
         assert response.status_code == 200
+
         data = response.get_json()
         assert isinstance(data, list)
+        assert len(data) > 0
+
+    def test_get_product_by_id(self, client, sample_product):
+        response = client.get(f"/products/{sample_product['id']}")
+        assert response.status_code == 200
+
+        product = response.get_json()
+        assert product['id'] == sample_product['id']
+        assert product['name'] == sample_product['name']
+
+    def test_get_categories(self, client):
+        response = client.get('/categories')
+        assert response.status_code == 200
+
+        data = response.get_json()
+        assert isinstance(data, list)
+        assert 'All' in data
 
 
 class TestCartAPI:
-    """Shopping cart endpoint tests"""
+    """Shopping cart endpoint tests."""
 
     def test_get_cart(self, client):
-        """Test fetching shopping cart"""
         response = client.get('/api/cart')
         assert response.status_code == 200
+        assert response.get_json() == []
 
     def test_add_to_cart(self, client, sample_product):
-        """Test adding item to cart"""
-        payload = {
-            'product_id': sample_product['id'],
-            'quantity': 1
-        }
-        response = client.post(
-            '/api/cart/add',
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
-        assert response.status_code in [200, 400]
+        response = client.post(f"/api/cart/add/{sample_product['id']}")
+        assert response.status_code == 200
+
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['cart_count'] == 1
 
     def test_remove_from_cart(self, client, sample_product):
-        """Test removing item from cart"""
-        response = client.post(
-            f'/api/cart/remove/{sample_product["id"]}',
-            content_type='application/json'
-        )
-        assert response.status_code in [200, 400]
+        client.post(f"/api/cart/add/{sample_product['id']}")
 
-    def test_clear_cart(self, client):
-        """Test clearing shopping cart"""
+        response = client.post(f"/api/cart/remove/{sample_product['id']}")
+        assert response.status_code == 200
+
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['cart_count'] == 0
+
+    def test_clear_cart(self, client, sample_product):
+        client.post(f"/api/cart/add/{sample_product['id']}")
+
         response = client.post('/api/cart/clear')
-        assert response.status_code in [200, 400]
+        assert response.status_code == 200
+        assert response.get_json()['success'] is True
 
-    def test_get_cart_count(self, client):
-        """Test getting cart item count"""
+    def test_get_cart_count(self, client, sample_product):
+        client.post(f"/api/cart/add/{sample_product['id']}")
+
         response = client.get('/api/cart/count')
         assert response.status_code == 200
-        data = response.get_json()
-        assert 'count' in data or 'error' in data
+        assert response.get_json()['count'] == 1
 
 
 class TestOrderAPI:
-    """Order endpoint tests"""
+    """Order endpoint tests."""
 
-    def test_get_orders(self, client):
-        """Test fetching orders"""
+    def test_get_orders_requires_authentication(self, client):
         response = client.get('/api/orders')
-        assert response.status_code in [200, 401]  # 401 if not authenticated
+        assert response.status_code == 401
 
-    def test_place_order(self, client, sample_order):
-        """Test placing new order"""
-        response = client.post(
-            '/api/orders',
-            data=json.dumps(sample_order),
-            content_type='application/json'
-        )
-        assert response.status_code in [200, 201, 400, 401]
+    def test_place_and_fetch_order(self, client, sample_user, sample_product, sample_order):
+        register_response = client.post('/api/register', json=sample_user)
+        assert register_response.status_code == 200
 
-    def test_get_order_by_id(self, client):
-        """Test fetching specific order"""
-        response = client.get('/api/orders/1')
-        assert response.status_code in [200, 404, 401]
+        client.post(f"/api/cart/add/{sample_product['id']}")
+
+        order_response = client.post('/api/orders', json=sample_order)
+        assert order_response.status_code == 200
+
+        order_id = order_response.get_json()['order_id']
+
+        detail_response = client.get(f'/api/orders/{order_id}')
+        assert detail_response.status_code == 200
+
+        order = detail_response.get_json()
+        assert order['id'] == order_id
+        assert order['tracking_steps']
 
 
 class TestHealthChecks:
-    """Health and readiness check tests"""
+    """Health and readiness check tests."""
 
     def test_health_check(self, client):
-        """Test /health endpoint"""
         response = client.get('/health')
         assert response.status_code == 200
-        data = response.get_json()
-        assert 'status' in data
+        assert response.get_json()['status'] == 'healthy'
 
     def test_readiness_check(self, client):
-        """Test /ready endpoint"""
         response = client.get('/ready')
-        assert response.status_code in [200, 503]
-        data = response.get_json()
-        assert 'status' in data
+        assert response.status_code == 200
+        assert response.get_json()['status'] == 'ready'
 
     def test_liveness_check(self, client):
-        """Test /live endpoint"""
         response = client.get('/live')
         assert response.status_code == 200
-        data = response.get_json()
-        assert 'status' in data
+        assert response.get_json()['status'] == 'alive'
 
 
 class TestMetricsEndpoint:
-    """Prometheus metrics endpoint tests"""
+    """Prometheus metrics endpoint tests."""
 
     def test_metrics_endpoint(self, client):
-        """Test /metrics endpoint"""
         response = client.get('/metrics')
         assert response.status_code == 200
-        # Check for Prometheus format
-        assert b'# HELP' in response.data or b'flask_http_request_total' in response.data
+        assert b'# HELP' in response.data or b'# TYPE' in response.data
 
 
 class TestErrorHandling:
-    """Error handling tests"""
+    """Error handling tests."""
 
     def test_invalid_endpoint(self, client):
-        """Test 404 error handling"""
         response = client.get('/invalid/endpoint')
         assert response.status_code == 404
 
     def test_method_not_allowed(self, client):
-        """Test 405 error handling"""
-        response = client.post('/products')  # GET only endpoint
-        assert response.status_code in [405, 400, 404]
-
-    def test_invalid_json_payload(self, client):
-        """Test error handling for invalid JSON"""
-        response = client.post(
-            '/api/cart/add',
-            data='invalid json',
-            content_type='application/json'
-        )
-        assert response.status_code in [400, 415]
+        response = client.post('/products')
+        assert response.status_code in [405, 404]

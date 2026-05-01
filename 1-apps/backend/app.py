@@ -8,10 +8,12 @@ import platform
 from flask import Flask, jsonify, request, session, make_response, g
 from flask_cors import CORS
 import psycopg2
+from prometheus_client import CONTENT_TYPE_LATEST
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
 from collections import deque
 from threading import Lock
+from observability import get_metrics
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
@@ -539,6 +541,11 @@ def ready():
 def live():
     """Liveness probe - checks if the process is running"""
     return jsonify({'status': 'alive', 'service': 'flask'})
+
+@app.route('/metrics')
+def metrics():
+    """Prometheus metrics endpoint"""
+    return get_metrics(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 # Monitoring API Endpoints
 @app.route('/api/monitor/requests')

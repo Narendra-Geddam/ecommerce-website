@@ -1,121 +1,99 @@
-"""
-E-Commerce testing configuration and fixtures.
-"""
+"""E-Commerce testing configuration and fixtures."""
 
-import pytest
 import os
 import sys
 from pathlib import Path
 
-# Add app directory to path
-app_dir = Path(__file__).parent.parent / 'apps' / 'backend'
-sys.path.insert(0, str(app_dir))
-
-# Test database configuration
-os.environ['TEST_MODE'] = 'true'
-os.environ['DATABASE_URL'] = 'postgresql://test:test@localhost:5432/ecommerce_test'
+import psycopg2
+import pytest
 
 
-@pytest.fixture
-def app():
-    """Create application for tests"""
-    # Mock app creation for testing
-    from flask import Flask
-    
-    app = Flask(__name__)
-    app.config['TESTING'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
-    
-    return app
+REPO_ROOT = Path(__file__).resolve().parent.parent
+BACKEND_DIR = REPO_ROOT / '1-apps' / 'backend'
+SCHEMA_FILE = REPO_ROOT / 'data' / 'schema.sql'
 
+sys.path.insert(0, str(BACKEND_DIR))
 
-@pytest.fixture
-def client(app):
-    """Create test client"""
-    return app.test_client()
+os.environ.setdefault('TEST_MODE', 'true')
+os.environ.setdefault('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/ecommerce_test')
+os.environ.setdefault('SECRET_KEY', 'test-secret-key')
 
-
-@pytest.fixture
-def runner(app):
-    """Create CLI runner for commands"""
-    return app.test_cli_runner()
+from app import app as flask_app
 
 
 @pytest.fixture(scope='session')
-def test_database():
-    """Setup test database"""
-    import psycopg2
-    
+def db_connection():
+    """Open the test database connection used by the Flask app."""
     try:
-        conn = psycopg2.connect(
-            host='localhost',
-            user='test',
-            password='test',
-            database='postgres'
-        )
-        conn.autocommit = True
-        cursor = conn.cursor()
-        
-        # Drop existing test db if exists
-        cursor.execute("DROP DATABASE IF EXISTS ecommerce_test;")
-        # Create fresh test db
-        cursor.execute("CREATE DATABASE ecommerce_test;")
-        
-        cursor.close()
-        conn.close()
-        
-        yield True
-        
-        # Cleanup
-        conn = psycopg2.connect(
-            host='localhost',
-            user='test',
-            password='test',
-            database='postgres'
-        )
-        conn.autocommit = True
-        cursor = conn.cursor()
-        cursor.execute("DROP DATABASE IF EXISTS ecommerce_test;")
-        cursor.close()
-        conn.close()
-        
-    except psycopg2.OperationalError:
-        pytest.skip("Test database not available")
+        connection = psycopg2.connect(os.environ['DATABASE_URL'])
+    except psycopg2.OperationalError as exc:
+        pytest.skip(f'Test database not available: {exc}')
+
+    connection.autocommit = True
+    yield connection
+    connection.close()
+
+
+@pytest.fixture(scope='session', autouse=True)
+def initialize_database(db_connection):
+    """Create schema and seed data once for the whole test session."""
+    with SCHEMA_FILE.open('r', encoding='utf-8') as schema_file:
+        db_connection.cursor().execute(schema_file.read())
+    yield
+
+
+@pytest.fixture(autouse=True)
+def reset_database(db_connection):
+    """Keep database state isolated between tests."""
+    cursor = db_connection.cursor()
+    cursor.execute('TRUNCATE TABLE order_items, orders, users RESTART IDENTITY CASCADE')
+    yield
+
+
+@pytest.fixture
+def client():
+    """Create a Flask test client backed by the real backend app."""
+    flask_app.config['TESTING'] = True
+    with flask_app.test_client() as test_client:
+        yield test_client
 
 
 @pytest.fixture
 def sample_product():
-    """Sample product data"""
+    """Sample product data."""
     return {
         'id': 1,
-        'name': 'Laptop',
-        'category': 'Electronics',
-        'price': 999.99,
-        'stock': 10,
-        'description': 'High performance laptop'
+        'name': 'Redmi 9A (Nature Green, 2GB RAM, 32GB Storage)',
+        'category': 'Mobiles',
+        'price': 6999.00,
+        'stock': 40,
+        'description': '13MP AI rear camera with portrait, scene recognition, HDR, pro mode | 5MP front camera | 6.53-inch HD+ display, 1600x720, 268ppi | 5000mAh battery | MediaTek Helio G25 processor'
     }
 
 
 @pytest.fixture
 def sample_user():
-    """Sample user data"""
+    """Sample user data."""
     return {
-        'username': 'testuser',
+        'name': 'Test User',
         'email': 'test@example.com',
-        'password': 'TestPassword123',
-        'full_name': 'Test User'
+        'password': 'TestPassword123!',
+        'phone': '555-0101',
+        'address': '123 Test Street',
+        'city': 'Testville',
+        'state': 'TS',
+        'pincode': '123456'
     }
 
 
 @pytest.fixture
 def sample_order():
-    """Sample order data"""
+    """Sample order data."""
     return {
-        'user_id': 1,
-        'items': [
-            {'product_id': 1, 'quantity': 2},
-            {'product_id': 2, 'quantity': 1}
-        ],
-        'total_price': 2499.97,
-        'status': 'pending'
+        'address': '123 Test Street',
+        'city': 'Testville',
+        'state': 'TS',
+        'pincode': '123456',
+        'phone': '555-0101',
+        'payment_method': 'COD'
     }
