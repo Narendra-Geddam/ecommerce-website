@@ -44,7 +44,7 @@ This phase is broken down into 4 sub-modules. You must complete them in order:
 ### The Master Script
 To easily spin up any of these environments, go to the root of the repository and run:
 ```bash
-./scripts/setup/learning-lab.sh
+./2-labs/learning-lab.sh
 ```
 
 ## Next Steps

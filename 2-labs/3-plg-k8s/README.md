@@ -23,7 +23,7 @@ Key files to study:
    ```
 4. Start the observability lab using the orchestration script:
    ```bash
-   ./scripts/setup/learning-lab.sh
+   ./2-labs/learning-lab.sh
    # Select option 4: Start K8s PLG Stack
    ```
    *Note: This script calls `deploy-observability.sh` and patches the port-forwarding to use `--address 0.0.0.0` which is required for iximiuz.*

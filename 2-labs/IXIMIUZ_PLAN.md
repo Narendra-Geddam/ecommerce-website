@@ -36,8 +36,8 @@ The repository is organized to support this learning simulator approach:
 1. **`docker-compose-elk.yml`**: Standalone Compose file for ELK. Fluent Bit mounts `/var/lib/docker/containers`.
 2. **`docker-compose-prom.yml`**: Standalone Compose file for Prometheus and Grafana.
 3. **`3-kubernetes/observability/`**: K8s manifests for PLG and EFK stacks.
-4. **`scripts/setup/learning-lab.sh`**: The master orchestration script to tear down and spin up different environments.
-5. **`scripts/deploy/deploy-observability.sh`**: The K8s specific deployer (updated to support `0.0.0.0` port forwarding).
+4. **`2-labs/learning-lab.sh`**: The master orchestration script to tear down and spin up different environments.
+5. **`2-labs/deploy-observability.sh`**: The K8s specific deployer (updated to support `0.0.0.0` port forwarding).
 
 ---
 *Note for AI Agents: Always consult this file before making modifications to the networking or volume mounting structures in the Docker or Kubernetes manifests. Ensure compatibility with the standard Linux capabilities provided by iximiuz.*

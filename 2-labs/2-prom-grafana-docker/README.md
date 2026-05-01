@@ -20,7 +20,7 @@ Key configurations to study:
 2. Clone this repository and enter it.
 3. Start the lab using the orchestration script:
    ```bash
-   ./scripts/setup/learning-lab.sh
+   ./2-labs/learning-lab.sh
    # Select option 3: Start App + Prometheus/Grafana
    ```
 4. Verify the containers are running:
@@ -52,6 +52,6 @@ Key configurations to study:
 ## Teardown
 When you are finished learning:
 ```bash
-./scripts/setup/learning-lab.sh
+./2-labs/learning-lab.sh
 # Select option 6: Teardown All Docker Compose Labs
 ```

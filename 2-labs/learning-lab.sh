@@ -2,13 +2,13 @@
 
 # learning-lab.sh
 # Quick-start script for individual lab scenarios.
-# For the full setup menu, use: ./setup.sh (at repo root)
+# For the full setup menu, use: ./scripts/setup.sh (from repo root)
 #
 # All tool credentials: admin / admin
 
 set -e
 
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/.."
 
 echo "==========================================="
 echo "   Observability Learning Lab Manager"
@@ -50,14 +50,14 @@ case $choice in
     ;;
   4)
     echo "Starting K8s PLG Stack..."
-    ./scripts/deploy/deploy-observability.sh --stack plg
+    ./2-labs/deploy-observability.sh --stack plg
     echo ""
     echo "✅ Grafana → NodePort 30030 (admin/admin) | Prometheus → NodePort 30090"
     echo "   In iximiuz: Click 'Expose Port' → enter the NodePort number"
     ;;
   5)
     echo "Starting K8s EFK Stack..."
-    ./scripts/deploy/deploy-observability.sh --stack efk
+    ./2-labs/deploy-observability.sh --stack efk
     echo ""
     echo "✅ Kibana → NodePort 30056 | Grafana → NodePort 30030 (admin/admin)"
     echo "   In iximiuz: Click 'Expose Port' → enter the NodePort number"

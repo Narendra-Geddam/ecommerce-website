@@ -29,16 +29,16 @@ You can easily deploy the stack using our included deployment script. The script
 
 ```bash
 # Make the script executable
-chmod +x scripts/deploy/deploy-observability.sh
+chmod +x 2-labs/deploy-observability.sh
 
 # Deploy PLG (Default)
-./scripts/deploy/deploy-observability.sh --stack plg
+./2-labs/deploy-observability.sh --stack plg
 
 # Deploy EFK
-./scripts/deploy/deploy-observability.sh --stack efk
+./2-labs/deploy-observability.sh --stack efk
 
 # Deploy Both
-./scripts/deploy/deploy-observability.sh --stack both
+./2-labs/deploy-observability.sh --stack both
 ```
 
 Alternatively, you can apply them manually:

@@ -377,8 +377,8 @@ This repository functions as a "production simulator" specifically optimized for
 You can easily switch between different learning environments using the master setup script:
 
 ```powershell
-chmod +x scripts/setup/learning-lab.sh
-./scripts/setup/learning-lab.sh
+chmod +x 2-labs/learning-lab.sh
+./2-labs/learning-lab.sh
 ```
 
 **The script provides 5 learning paths:**

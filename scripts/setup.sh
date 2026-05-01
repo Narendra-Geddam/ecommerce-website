@@ -9,7 +9,8 @@
 
 set -e
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
+REPO_ROOT=$(pwd)
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
@@ -97,7 +98,7 @@ case $choice in
     echo ""
     echo "🚀 Deploying K8s App + PLG Stack..."
     kubectl apply -k 3-kubernetes/base/ 2>/dev/null || kubectl apply -f 3-kubernetes/base/ 2>/dev/null || true
-    ./scripts/deploy/deploy-observability.sh --stack plg
+    ./2-labs/deploy-observability.sh --stack plg
     echo ""
     echo "✅ K8s PLG Stack deployed!"
     echo "   Grafana:     NodePort 30030  (admin / admin)"
@@ -109,7 +110,7 @@ case $choice in
     echo ""
     echo "🚀 Deploying K8s App + EFK Stack..."
     kubectl apply -k 3-kubernetes/base/ 2>/dev/null || kubectl apply -f 3-kubernetes/base/ 2>/dev/null || true
-    ./scripts/deploy/deploy-observability.sh --stack efk
+    ./2-labs/deploy-observability.sh --stack efk
     echo ""
     echo "✅ K8s EFK Stack deployed!"
     echo "   Kibana:      NodePort 30056"
@@ -122,7 +123,7 @@ case $choice in
     echo ""
     echo "🚀 Deploying K8s Full Observability..."
     kubectl apply -k 3-kubernetes/base/ 2>/dev/null || kubectl apply -f 3-kubernetes/base/ 2>/dev/null || true
-    ./scripts/deploy/deploy-observability.sh --stack both
+    ./2-labs/deploy-observability.sh --stack both
     echo ""
     echo "✅ Full K8s observability deployed!"
     echo "   Grafana:     NodePort 30030  (admin / admin)"
@@ -147,7 +148,7 @@ case $choice in
     echo ""
     echo "🚀 Deploying EVERYTHING (Full K8s + Observability + ArgoCD)..."
     kubectl apply -k 3-kubernetes/base/ 2>/dev/null || kubectl apply -f 3-kubernetes/base/ 2>/dev/null || true
-    ./scripts/deploy/deploy-observability.sh --stack both
+    ./2-labs/deploy-observability.sh --stack both
     chmod +x 4-ci-cd/argocd/install-argocd.sh
     ./4-ci-cd/argocd/install-argocd.sh
     echo ""

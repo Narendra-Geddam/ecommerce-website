@@ -20,7 +20,7 @@ However, you should review the configuration files to understand how it works:
 2. Clone this repository and enter it.
 3. Start the lab using the orchestration script:
    ```bash
-   ./scripts/setup/learning-lab.sh
+   ./2-labs/learning-lab.sh
    # Select option 2: Start App + ELK Stack
    ```
 4. Verify the containers are running:
@@ -50,6 +50,6 @@ However, you should review the configuration files to understand how it works:
 ## Teardown
 When you are finished learning:
 ```bash
-./scripts/setup/learning-lab.sh
+./2-labs/learning-lab.sh
 # Select option 6: Teardown All Docker Compose Labs
 ```

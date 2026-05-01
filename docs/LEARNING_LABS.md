@@ -18,8 +18,8 @@ If you are new to observability, we strongly recommend following the labs in thi
 You can orchestrate these labs using the central setup script:
 
 ```bash
-chmod +x scripts/setup/learning-lab.sh
-./scripts/setup/learning-lab.sh
+chmod +x 2-labs/learning-lab.sh
+./2-labs/learning-lab.sh
 ```
 
 ### Lab 1: ELK Stack via Docker Compose

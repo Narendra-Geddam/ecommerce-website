@@ -1,0 +1,42 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "validate-tests",
+			"type": "shell",
+			"command": "C:/Users/don81/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"-m",
+				"pip",
+				"install",
+				"-r",
+				"1-apps/backend/requirements.txt",
+				"pytest",
+				"pytest-cov",
+				"&&",
+				"C:/Users/don81/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+				"-m",
+				"pytest",
+				"tests/",
+				"-v",
+				"--junit-xml=test-results.xml"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "git-publish-fix",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Location 'e:\\DevOps\\DevOps\\e-commerce'; git config user.name 'github-actions[bot]'; git config user.email 'github-actions[bot]@users.noreply.github.com'; git add .github/workflows/ci-cd.yml 1-apps/backend/app.py tests/conftest.py tests/test_api.py tests/test_auth.py tests/test_observability.py; git commit -m 'Fix test CI wiring'; git push"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "none"
+		}
+	]
+}

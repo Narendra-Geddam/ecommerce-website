@@ -11,7 +11,7 @@ STACK="plg"
 NAMESPACE="monitoring"
 
 # Resolve KUBE_DIR relative to repo root
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/.."
 REPO_ROOT=$(pwd)
 KUBE_DIR="${REPO_ROOT}/3-kubernetes/observability"
 

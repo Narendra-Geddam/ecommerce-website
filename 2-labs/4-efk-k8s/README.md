@@ -23,7 +23,7 @@ Key files to study:
    ```
 4. Start the observability lab using the orchestration script:
    ```bash
-   ./scripts/setup/learning-lab.sh
+   ./2-labs/learning-lab.sh
    # Select option 5: Start K8s EFK Stack
    ```
 5. Verify the pods are running in the `monitoring` namespace:
