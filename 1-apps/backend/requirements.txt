@@ -17,3 +17,4 @@ protobuf>=6.31.1
 wheel>=0.46.2
 jaraco.context>=6.1.0
 setuptools>=79.1.1
+importlib-metadata>=7.0.0
