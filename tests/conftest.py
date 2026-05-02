@@ -3,6 +3,7 @@
 import os
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import psycopg2
 import pytest
@@ -18,16 +19,35 @@ os.environ.setdefault('TEST_MODE', 'true')
 os.environ.setdefault('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/ecommerce_test')
 os.environ.setdefault('SECRET_KEY', 'test-secret-key')
 
+# Mock opentelemetry modules that have version-compatibility issues in test
+# environments.  The Jaeger exporter is only used by setup_tracing() which
+# app.py never calls, so it is safe to stub the whole package tree here.
+_ot_modules_to_mock = [
+    'opentelemetry.exporter.jaeger',
+    'opentelemetry.exporter.jaeger.thrift',
+    'opentelemetry.instrumentation.flask',
+    'opentelemetry.instrumentation.psycopg2',
+    'opentelemetry.instrumentation.requests',
+]
+for _mod_name in _ot_modules_to_mock:
+    sys.modules[_mod_name] = MagicMock()
+
 from app import app as flask_app
 
 
 @pytest.fixture(scope='session')
 def db_connection():
-    """Open the test database connection used by the Flask app."""
+    """Open the test database connection used by the Flask app.
+
+    Yields ``None`` when the database is not reachable so that autouse
+    fixtures can stay no-ops rather than propagating a session-wide skip that
+    would cancel tests that don't need a database at all.
+    """
     try:
         connection = psycopg2.connect(os.environ['DATABASE_URL'])
-    except psycopg2.OperationalError as exc:
-        pytest.skip(f'Test database not available: {exc}')
+    except psycopg2.OperationalError:
+        yield None
+        return
 
     connection.autocommit = True
     yield connection
@@ -37,6 +57,9 @@ def db_connection():
 @pytest.fixture(scope='session', autouse=True)
 def initialize_database(db_connection):
     """Create schema and seed data once for the whole test session."""
+    if db_connection is None:
+        yield
+        return
     with SCHEMA_FILE.open('r', encoding='utf-8') as schema_file:
         db_connection.cursor().execute(schema_file.read())
     yield
@@ -45,14 +68,23 @@ def initialize_database(db_connection):
 @pytest.fixture(autouse=True)
 def reset_database(db_connection):
     """Keep database state isolated between tests."""
+    if db_connection is None:
+        yield
+        return
     cursor = db_connection.cursor()
     cursor.execute('TRUNCATE TABLE order_items, orders, users RESTART IDENTITY CASCADE')
     yield
 
 
 @pytest.fixture
-def client():
-    """Create a Flask test client backed by the real backend app."""
+def client(db_connection):
+    """Flask test client backed by the real app with a live database.
+
+    Tests that use this fixture are automatically skipped when the database
+    is not reachable.
+    """
+    if db_connection is None:
+        pytest.skip('Test database not available')
     flask_app.config['TESTING'] = True
     with flask_app.test_client() as test_client:
         yield test_client
