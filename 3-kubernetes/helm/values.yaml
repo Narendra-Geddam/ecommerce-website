@@ -106,7 +106,7 @@ application:
     port: 5000
     image:
       repository: privatergistry/ecommerce-application
-      tag: "5694c91807b59021ff724e3b5b1f3acab691983d"
+      tag: "dce7b78dc710819191f5153efd31266b65cf3545"
       pullPolicy: Always
     resources:
       limits:
@@ -128,7 +128,7 @@ application:
     port: 80
     image:
       repository: privatergistry/ecommerce-presentation
-      tag: "5694c91807b59021ff724e3b5b1f3acab691983d"
+      tag: "dce7b78dc710819191f5153efd31266b65cf3545"
       pullPolicy: Always
     resources:
       limits:
