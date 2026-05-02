@@ -333,7 +333,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: application
-          image: privatergistry/ecommerce-application:fcd8b4bfc68e9076c8184b7b96d1ca6b64904467
+          image: privatergistry/ecommerce-application:2ebc9a27872841b31bbcc98f756d2b75e8e30e02
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
@@ -426,7 +426,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: presentation
-          image: privatergistry/ecommerce-presentation:fcd8b4bfc68e9076c8184b7b96d1ca6b64904467
+          image: privatergistry/ecommerce-presentation:2ebc9a27872841b31bbcc98f756d2b75e8e30e02
           imagePullPolicy: Always
           ports:
             - containerPort: 80
