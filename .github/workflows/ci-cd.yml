@@ -19,8 +19,52 @@ env:
   BACKEND_IMAGE: ${{ github.repository_owner }}/ecommerce-application
 
 jobs:
+  sonarcloud:
+    name: SonarCloud Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Resolve SonarCloud settings
+        shell: bash
+        run: |
+          project_key="${{ vars.SONAR_PROJECT_KEY }}"
+          organization="${{ vars.SONAR_ORGANIZATION }}"
+
+          if [ -z "$project_key" ]; then
+            project_key="${GITHUB_REPOSITORY/\//_}"
+          fi
+
+          if [ -z "$organization" ]; then
+            organization="${GITHUB_REPOSITORY_OWNER,,}"
+          fi
+
+          echo "SONAR_PROJECT_KEY=${project_key}" >> "$GITHUB_ENV"
+          echo "SONAR_ORGANIZATION=${organization}" >> "$GITHUB_ENV"
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Run SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.projectKey=$SONAR_PROJECT_KEY
+            -Dsonar.organization=$SONAR_ORGANIZATION
+
   build-and-scan:
     name: Build & Security Scan
+    needs: sonarcloud
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
