@@ -233,6 +233,7 @@ spec:
         app: database
         tier: data
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: postgres
           image: postgres:15-alpine
@@ -261,6 +262,15 @@ spec:
               mountPath: /var/lib/postgresql/data
             - name: db-init
               mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+              ephemeral-storage: 512Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+              ephemeral-storage: 1Gi
           readinessProbe:
             exec:
               command:
@@ -320,9 +330,10 @@ spec:
         app: application
         tier: backend
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: application
-          image: privatergistry/ecommerce-application:latest
+          image: privatergistry/ecommerce-application:dce7b78dc710819191f5153efd31266b65cf3545
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
@@ -359,6 +370,15 @@ spec:
               value: backend
             - name: REPLICAS
               value: "1"
+          resources:
+            requests:
+              cpu: 150m
+              memory: 256Mi
+              ephemeral-storage: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
+              ephemeral-storage: 512Mi
           readinessProbe:
             httpGet:
               path: /ready
@@ -403,9 +423,10 @@ spec:
         app: presentation
         tier: frontend
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: presentation
-          image: privatergistry/ecommerce-presentation:latest
+          image: privatergistry/ecommerce-presentation:dce7b78dc710819191f5153efd31266b65cf3545
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -417,6 +438,15 @@ spec:
               value: frontend
             - name: REPLICAS
               value: "1"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+              ephemeral-storage: 256Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+              ephemeral-storage: 512Mi
           readinessProbe:
             httpGet:
               path: /ready

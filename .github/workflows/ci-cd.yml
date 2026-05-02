@@ -14,6 +14,7 @@ on:
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME || github.repository_owner }}
   HELM_VALUES_FILE: 3-kubernetes/helm/values.yaml
+  KUBERNETES_LAB_FILE: kubernetes-lab.yaml
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FRONTEND_IMAGE: ${{ github.repository_owner }}/ecommerce-presentation
   BACKEND_IMAGE: ${{ github.repository_owner }}/ecommerce-application
@@ -132,12 +133,14 @@ jobs:
         with:
           token: ${{ secrets.UPDATE_TOKEN }}
 
-      - name: Update Image Tag in values.yaml
+      - name: Update deployment image references
         run: |
           python - <<'PY'
           from pathlib import Path
 
           values_file = Path("3-kubernetes/helm/values.yaml")
+          manifest_file = Path("kubernetes-lab.yaml")
+          image_tag = "${{ github.sha }}"
           content = values_file.read_text(encoding="utf-8")
           lines = content.splitlines()
 
@@ -172,6 +175,26 @@ jobs:
                   in_image_block = False
 
           values_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          manifest_content = manifest_file.read_text(encoding="utf-8")
+          replacements = {
+              "privatergistry/ecommerce-application:": f"privatergistry/ecommerce-application:{image_tag}",
+              "privatergistry/ecommerce-presentation:": f"privatergistry/ecommerce-presentation:{image_tag}",
+          }
+
+          manifest_lines = []
+          for line in manifest_content.splitlines():
+              updated_line = line
+              stripped = line.strip()
+              if stripped.startswith("image: "):
+                  for prefix, replacement in replacements.items():
+                      if prefix in stripped:
+                          indent = line[: len(line) - len(line.lstrip())]
+                          updated_line = f"{indent}image: {replacement}"
+                          break
+              manifest_lines.append(updated_line)
+
+          manifest_file.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
           PY
           
       - name: Commit and Push Changes
@@ -180,7 +203,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add ${{ env.HELM_VALUES_FILE }}
+          git add ${{ env.HELM_VALUES_FILE }} ${{ env.KUBERNETES_LAB_FILE }}
           git diff --cached --quiet && exit 0
           git commit -m "🚀 GitOps: Update image tag to ${{ github.sha }} [skip ci]"
           git push origin HEAD:main
