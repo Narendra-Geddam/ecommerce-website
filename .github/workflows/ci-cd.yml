@@ -40,7 +40,7 @@ jobs:
         run: docker build -t ${{ env.BACKEND_IMAGE }}:${{ github.sha }} -f 1-apps/backend/Dockerfile 1-apps/backend/
 
       - name: Run Trivy Vulnerability Scanner (Frontend)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: '${{ env.FRONTEND_IMAGE }}:${{ github.sha }}'
           format: 'table'
@@ -50,7 +50,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Run Trivy Vulnerability Scanner (Backend)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: '${{ env.BACKEND_IMAGE }}:${{ github.sha }}'
           format: 'table'
