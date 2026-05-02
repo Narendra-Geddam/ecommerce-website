@@ -6,9 +6,29 @@ environment (local, CI, or container) without a running PostgreSQL instance
 or Jaeger agent.
 """
 
+from pathlib import Path
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# conftest.py is loaded by pytest before this file, so by this point:
+#   • the backend directory is already on sys.path
+#   • the opentelemetry/jaeger mocks are already in sys.modules
+# A direct import therefore works without any extra setup.
+from app import app as _flask_app
+
+
+# ---------------------------------------------------------------------------
+# Module-local client fixture — no DB dependency, never skipped
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def client():
+    """Lightweight Flask test client that does NOT require a database."""
+    _flask_app.config['TESTING'] = True
+    with _flask_app.test_client() as test_client:
+        yield test_client
 
 
 # ---------------------------------------------------------------------------

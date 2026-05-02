@@ -1,0 +1,1 @@
+DEBUG    urllib3.connectionpool:connectionpool.py:245 Starting new HTTP connection (1): jaeger:16686
