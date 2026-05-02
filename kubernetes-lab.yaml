@@ -322,7 +322,7 @@ spec:
     spec:
       containers:
         - name: application
-          image: narendra-geddam/ecommerce-application:latest
+          image: privatergistry/ecommerce-application:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
@@ -405,7 +405,7 @@ spec:
     spec:
       containers:
         - name: presentation
-          image: narendra-geddam/ecommerce-presentation:latest
+          image: privatergistry/ecommerce-presentation:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
