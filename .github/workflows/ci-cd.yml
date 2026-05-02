@@ -1,5 +1,8 @@
 name: CI/CD Pipeline
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -89,12 +92,51 @@ jobs:
 
       - name: Update Image Tag in values.yaml
         run: |
-          sed -i "s|tag: .*|tag: \"${{ github.sha }}\"|g" ${{ env.HELM_VALUES_FILE }}
+          python - <<'PY'
+          from pathlib import Path
+
+          values_file = Path("3-kubernetes/helm/values.yaml")
+          content = values_file.read_text(encoding="utf-8")
+          lines = content.splitlines()
+
+          current_section = None
+          in_image_block = False
+
+          for index, line in enumerate(lines):
+              stripped = line.strip()
+
+              if stripped == "flask:" and line.startswith("  "):
+                  current_section = "flask"
+                  in_image_block = False
+                  continue
+
+              if stripped == "nginx:" and line.startswith("  "):
+                  current_section = "nginx"
+                  in_image_block = False
+                  continue
+
+              if current_section and stripped == "image:" and line.startswith("    "):
+                  in_image_block = True
+                  continue
+
+              if in_image_block and stripped.startswith("tag:"):
+                  indent = line[: len(line) - len(line.lstrip())]
+                  lines[index] = f'{indent}tag: "${{ github.sha }}"'
+                  in_image_block = False
+                  continue
+
+              if current_section and stripped and not line.startswith("    "):
+                  current_section = None
+                  in_image_block = False
+
+          values_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
           
       - name: Commit and Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add ${{ env.HELM_VALUES_FILE }}
-          git commit -m "🚀 GitOps: Update image tag to ${{ github.sha }} [skip ci]" || echo "No changes to commit"
-          git push origin main
+          git diff --cached --quiet && exit 0
+          git commit -m "🚀 GitOps: Update image tag to ${{ github.sha }} [skip ci]"
+          git push origin HEAD:main
