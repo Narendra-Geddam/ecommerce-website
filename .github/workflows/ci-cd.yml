@@ -28,22 +28,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve SonarCloud settings
+      - name: Validate SonarCloud configuration
         shell: bash
         run: |
-          project_key="${{ vars.SONAR_PROJECT_KEY }}"
-          organization="${{ vars.SONAR_ORGANIZATION }}"
-
-          if [ -z "$project_key" ]; then
-            project_key="${GITHUB_REPOSITORY/\//_}"
+          if [ -z "${{ vars.SONAR_PROJECT_KEY }}" ]; then
+            echo "SONAR_PROJECT_KEY repository variable is not set."
+            exit 1
           fi
 
-          if [ -z "$organization" ]; then
-            organization="${GITHUB_REPOSITORY_OWNER,,}"
+          if [ -z "${{ vars.SONAR_ORGANIZATION }}" ]; then
+            echo "SONAR_ORGANIZATION repository variable is not set."
+            exit 1
           fi
-
-          echo "SONAR_PROJECT_KEY=${project_key}" >> "$GITHUB_ENV"
-          echo "SONAR_ORGANIZATION=${organization}" >> "$GITHUB_ENV"
 
       - name: Cache SonarCloud packages
         uses: actions/cache@v4
@@ -59,8 +55,8 @@ jobs:
           SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: >
-            -Dsonar.projectKey=$SONAR_PROJECT_KEY
-            -Dsonar.organization=$SONAR_ORGANIZATION
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
 
   build-and-scan:
     name: Build & Security Scan
