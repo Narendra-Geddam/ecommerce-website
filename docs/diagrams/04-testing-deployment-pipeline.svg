@@ -16,7 +16,7 @@
 
   <rect x="80" y="90" width="180" height="60" class="box"/><text x="130" y="126" class="txt">Git Push</text>
   <rect x="320" y="90" width="180" height="60" class="box"/><text x="368" y="126" class="txt">Jenkins</text>
-  <rect x="560" y="90" width="200" height="60" class="box"/><text x="620" y="126" class="txt">Run Tests</text>
+  <rect x="560" y="90" width="200" height="60" class="box"/><text x="616" y="126" class="txt">Build Images</text>
   <rect x="820" y="90" width="220" height="60" class="box"/><text x="875" y="126" class="txt">Build Images</text>
 
   <line x1="260" y1="120" x2="320" y2="120" class="arrow"/>

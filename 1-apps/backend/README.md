@@ -88,13 +88,15 @@ kubectl logs -n prod-ecommerce -l app=flask-api --tail=50
 ## API Endpoints
 
 ### Products
-- `GET /api/products` - Fetch all products with pagination
-- `GET /api/products/<id>` - Get product details
+- `GET /products` - Fetch all products
+- `GET /products/<id>` - Get product details
+- `GET /categories` - Get available product categories
 
 ### Users & Authentication
+- `GET /api/me` - Get current user session
 - `POST /api/register` - Register new user
 - `POST /api/login` - User login
-- `GET /api/profile` - Get current user profile
+- `PUT /api/profile` - Update current user profile
 - `POST /api/logout` - User logout
 
 ### Orders
@@ -104,12 +106,17 @@ kubectl logs -n prod-ecommerce -l app=flask-api --tail=50
 
 ### Cart
 - `GET /api/cart` - Get shopping cart
-- `POST /api/cart/add` - Add item to cart
-- `DELETE /api/cart/<item_id>` - Remove from cart
+- `POST /api/cart/add/<product_id>` - Add item to cart
+- `POST /api/cart/remove/<product_id>` - Remove one item from cart
+- `POST /api/cart/clear` - Clear cart
+- `GET /api/cart/count` - Get cart item count
 
 ### Health & Monitoring
 - `GET /health` - Health check endpoint
-- `GET /api/stats` - Application statistics
+- `GET /ready` - Readiness check
+- `GET /live` - Liveness check
+- `GET /metrics` - Prometheus metrics
+- `GET /api/monitor/*` - Monitoring endpoints
 
 ## Database Schema
 
@@ -220,13 +227,6 @@ Enable query logging by adjusting `LOG_LEVEL` parameter in AWS Parameter Store t
 
 2. Rebuild Docker image
 3. Deploy via Helm upgrade
-
-### Running Tests
-
-```bash
-# From workspace root
-pytest tests/
-```
 
 ## Security
 

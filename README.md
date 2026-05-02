@@ -73,9 +73,9 @@ This repository is designed to be learned in phases. Follow this roadmap to buil
 - **Action:** Deploy the app using standard Kubernetes manifests (`base/`) and then learn how to package it for production using Helm charts (`helm/`).
 
 ### Phase 4: CI/CD Pipeline Automation
-- **Goal:** Automate testing and deployment.
-- **Where to look:** The `4-ci-cd/jenkins/` folder and the root `Jenkinsfile`.
-- **Action:** Read the `Jenkinsfile` to understand how the code is tested, built, and pushed automatically.
+- **Goal:** Automate image delivery and deployment.
+- **Where to look:** `.github/workflows/ci-cd.yml` and `4-ci-cd/`.
+- **Action:** Read the GitHub Actions workflow to understand how images are built, scanned, pushed, and promoted through GitOps.
 
 ### Phase 5: Infrastructure as Code (AWS & Terraform)
 - **Goal:** Provision real-world cloud resources.
@@ -102,9 +102,9 @@ These diagrams are stored as SVG files for long-term reuse and easy updates.
 
 ![Observability and Canary Deployment Architecture](docs/diagrams/03-observability-canary-architecture.svg)
 
-### 4) Complete Testing and Deployment Pipeline
+### 4) Complete Delivery Pipeline
 
-![Complete Testing and Deployment Pipeline](docs/diagrams/04-testing-deployment-pipeline.svg)
+![Complete Delivery Pipeline](docs/diagrams/04-testing-deployment-pipeline.svg)
 
 ### 5) New Components and Capabilities Added
 
@@ -344,10 +344,9 @@ e-commerce/
 │       ├── parameters.tf
 │       └── outputs.tf
 │
-├── 4-ci-cd/                              # CI/CD Pipeline
-│   └── jenkins/
-│       ├── Jenkinsfile
-│       └── docker-compose.yml
+├── 4-ci-cd/                              # CI/CD and GitOps guides
+│   ├── README.md
+│   └── argocd/
 │
 ├── scripts/                            # Automation scripts
 │
@@ -355,8 +354,6 @@ e-commerce/
 │
 ├── data/                               # Database schema
 │   └── schema.sql
-│
-├── tests/                              # Test suites
 │
 └── README.md                           # This file
 ```
@@ -841,7 +838,7 @@ kubectl get all -n prod-ecommerce
 kubectl get externalsecrets -n prod-ecommerce -o wide
 ```
 
-### Development/Testing
+### Development/Validation
 
 ```powershell
 # Make changes
@@ -856,7 +853,7 @@ kubectl get secrets -n prod-ecommerce
 kubectl logs -n prod-ecommerce deployment/flask-api
 ```
 
-### Done Testing - Save Costs
+### Done Validating - Save Costs
 
 ```powershell
 cd terraform

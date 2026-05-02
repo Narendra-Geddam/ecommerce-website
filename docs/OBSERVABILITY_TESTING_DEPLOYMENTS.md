@@ -1,8 +1,8 @@
-# Observability & Testing Guide
+# Observability & Deployment Guide
 
 ## Overview
 
-This document covers the complete observability, testing, and deployment strategy for the e-commerce system.
+This document covers the observability and deployment strategy for the e-commerce system.
 
 ---
 
@@ -175,99 +175,7 @@ curl http://localhost:16686  # Jaeger UI
 
 ---
 
-## Part 2: Testing Strategy
-
-### Setup
-
-#### 1. Install Test Dependencies
-
-```bash
-cd 1-apps/backend
-pip install -r requirements-test.txt
-```
-
-#### 2. Test Structure
-
-```
-tests/
-├── conftest.py              # Shared fixtures & config
-├── test_api.py              # API endpoint tests
-├── test_auth.py             # Authentication tests
-├── test_observability.py    # Observability tests
-└── pytest.ini               # Pytest configuration
-```
-
-### Running Tests
-
-#### Unit Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_api.py
-
-# Run specific test
-pytest tests/test_api.py::TestProductAPI::test_get_products
-
-# Run with coverage
-pytest --cov=1-apps/backend --cov-report=html
-
-# Run with verbosity
-pytest -vv --tb=long
-```
-
-#### Test Markers
-
-```bash
-# Run only API tests
-pytest -m api
-
-# Run integration tests (requires DB)
-pytest -m integration
-
-# Skip slow tests
-pytest -m "not slow"
-
-# Run observability tests
-pytest -m observability
-```
-
-### CI/CD Integration
-
-The Jenkins pipeline runs tests automatically:
-
-```groovy
-stage('Run Tests') {
-    when {
-        expression { params.SKIP_TESTS == false }
-    }
-    steps {
-        sh '''
-            pytest tests/ -v --junit-xml=test-results.xml
-        '''
-    }
-}
-```
-
-Test results are archived and displayed in Jenkins dashboard.
-
-### Test Coverage
-
-Target: **>80% code coverage**
-
-```bash
-# Generate coverage report
-pytest --cov=1-apps/backend --cov-report=html
-
-# View report
-open htmlcov/index.html
-```
-
----
-
-## Part 3: Deployment Strategies
+## Part 2: Deployment Strategies
 
 ### Three Supported Strategies
 
@@ -294,7 +202,7 @@ Minute 25  ▓▓▓▓▓▓▓▓▓▓ 100% canary (complete)
 **Configuration**:
 
 ```bash
-# Jenkins parameters
+# Pipeline parameters
 DEPLOYMENT_STRATEGY = "canary"
 CANARY_WEIGHT = "5"        # Start with 5% traffic
 
@@ -362,14 +270,14 @@ DEPLOYMENT_STRATEGY = "rolling"
 #### 1. Trigger Deployment
 
 ```bash
-# Via Jenkins UI:
+# Via pipeline UI:
 # 1. Click "Build with Parameters"
 # 2. Select DEPLOYMENT_STRATEGY
 # 3. Set CANARY_WEIGHT (for canary)
 # 4. Click "Build"
 
 # Or via CLI:
-curl -X POST http://jenkins:8080/job/ecommerce/buildWithParameters \
+curl -X POST http://ci.example.internal/job/ecommerce/buildWithParameters \
   -u admin:password \
   -F DEPLOYMENT_STRATEGY=canary \
   -F CANARY_WEIGHT=5
@@ -380,7 +288,7 @@ curl -X POST http://jenkins:8080/job/ecommerce/buildWithParameters \
 ```
 ✅ Checkout Code
   ↓
-🧪 Run Tests (if enabled)
+🔨 Build Images
   ↓
 🔨 Build Images (parallelized)
   ├─ Build Frontend

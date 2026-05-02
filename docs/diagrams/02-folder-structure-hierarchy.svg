@@ -32,9 +32,9 @@
   <rect x="280" y="300" width="220" height="70" class="sub"/><text x="315" y="342" class="txt">infra/kubernetes</text>
   <rect x="280" y="390" width="220" height="70" class="sub"/><text x="333" y="432" class="txt">infra/terraform</text>
 
-  <rect x="520" y="300" width="220" height="70" class="sub"/><text x="566" y="342" class="txt">jenkins/Jenkinsfile</text>
+  <rect x="520" y="300" width="220" height="70" class="sub"/><text x="556" y="342" class="txt">GitHub Actions</text>
   <rect x="760" y="300" width="220" height="70" class="sub"/><text x="834" y="342" class="txt">schema.sql</text>
-  <rect x="1000" y="300" width="160" height="70" class="sub"/><text x="1047" y="342" class="txt">pytest</text>
+  <rect x="1000" y="300" width="160" height="70" class="sub"/><text x="1042" y="342" class="txt">docs only</text>
 
   <line x1="150" y1="232" x2="150" y2="300" class="line"/>
   <line x1="150" y1="232" x2="150" y2="390" class="line"/>

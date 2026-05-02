@@ -1,10 +1,8 @@
 graph LR
-    GIT[Git Push] -->|Webhook| JENKINS[Jenkins]
-    JENKINS --> TESTS[Tests pytest]
-    TESTS -->|PASS| BUILD[Build Images Parallel]
-    TESTS -->|FAIL| SLACK[Slack Alert]
+    GIT[Git Push] -->|Webhook| ACTIONS[GitHub Actions]
+    ACTIONS --> BUILD[Build Images Parallel]
     BUILD --> SCAN[Trivy Scan]
-    SCAN -->|CRITICAL| SLACK
+    SCAN -->|CRITICAL| SLACK[Slack Alert]
     SCAN -->|PASS| PUSH[Push to Hub]
     PUSH --> HELM[Update Helm]
     HELM --> STRATEGY{Deployment Strategy}

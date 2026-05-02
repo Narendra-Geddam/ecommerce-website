@@ -17,9 +17,9 @@ sequenceDiagram
     participant K8s as ☸️ Kubernetes Cluster
 
     Dev->>Git: 1. Push Code
-    Git->>Git: 2. Run Tests & Trivy Security Scan
-    Git->>Registry: 3. Build & Push New Images
-    Git->>Git: 4. Git commit new Image Tag to values.yaml
+    Git->>Git: 2. Build Images & Trivy Security Scan
+    Git->>Registry: 3. Push New Images
+    Git->>Git: 4. Commit new Image Tag to values.yaml
     Argo->>Git: 5. Detect Git Configuration Change
     Argo->>K8s: 6. Pull and Sync new Deployment to Cluster
     K8s-->>Dev: 7. App is Live!
@@ -32,7 +32,6 @@ This phase is broken into two components: Continuous Integration (CI) and Contin
 ### 1. Continuous Integration (GitHub Actions)
 1. **Open `.github/workflows/ci-cd.yml`** at the root of the repository.
 2. **Study the Workflow:** Notice how the pipeline is entirely serverless. Upon a push to the `main` branch, GitHub spins up an Ubuntu runner to:
-   - Run Python Unit Tests
    - Build the Docker images from the `1-apps/` folder.
    - Scan the images using Trivy.
    - Push them to Docker Hub.
