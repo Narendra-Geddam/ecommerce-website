@@ -130,7 +130,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4.2.2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.UPDATE_TOKEN }}
 
       - name: Update Image Tag in values.yaml
         run: |
@@ -175,6 +175,8 @@ jobs:
           PY
           
       - name: Commit and Push Changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.UPDATE_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
