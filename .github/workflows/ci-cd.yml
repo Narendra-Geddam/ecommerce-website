@@ -15,7 +15,6 @@ env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME || github.repository_owner }}
   HELM_VALUES_FILE: 3-kubernetes/helm/values.yaml
   KUBERNETES_LAB_FILE: kubernetes-lab.yaml
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FRONTEND_IMAGE: ${{ github.repository_owner }}/ecommerce-presentation
   BACKEND_IMAGE: ${{ github.repository_owner }}/ecommerce-application
 
@@ -25,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -43,7 +42,7 @@ jobs:
           fi
 
       - name: Cache SonarCloud packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
@@ -55,6 +54,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
         with:
+          skipSignatureVerification: false
           args: >
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
@@ -66,7 +66,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
 
       - name: Resolve Docker image namespace
         shell: bash
@@ -129,7 +129,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.UPDATE_TOKEN }}
 
