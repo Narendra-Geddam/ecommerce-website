@@ -1,0 +1,431 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecommerce-lab
+  labels:
+    app.kubernetes.io/name: ecommerce-lab
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lab-app-config
+  namespace: ecommerce-lab
+data:
+  FLASK_ENV: "production"
+  FLASK_DEBUG: "false"
+  LOG_LEVEL: "INFO"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lab-db-init
+  namespace: ecommerce-lab
+data:
+  01_schema.sql: |
+    -- Users table
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        phone VARCHAR(20),
+        address TEXT,
+        city VARCHAR(100),
+        state VARCHAR(100),
+        pincode VARCHAR(10),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Products table
+    CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        price DECIMAL(10, 2) NOT NULL,
+        image_url VARCHAR(500),
+        category VARCHAR(100),
+        stock INTEGER DEFAULT 100,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Orders table
+    CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        total_amount DECIMAL(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'Processing',
+        shipping_address TEXT,
+        city VARCHAR(100),
+        state VARCHAR(100),
+        pincode VARCHAR(10),
+        phone VARCHAR(20),
+        payment_method VARCHAR(50) DEFAULT 'COD',
+        order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        delivery_date TIMESTAMP
+    );
+
+    -- Order items table
+    CREATE TABLE IF NOT EXISTS order_items (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+        product_id INTEGER REFERENCES products(id),
+        quantity INTEGER NOT NULL,
+        price DECIMAL(10, 2) NOT NULL
+    );
+
+    -- Insert real products with actual images from demo_data
+    INSERT INTO products (name, description, price, image_url, category, stock) VALUES
+    ('Redmi 9A (Nature Green, 2GB RAM, 32GB Storage)', '13MP rear camera with AI portrait, AI scene recognition, HDR, pro mode | 5MP front camera. | 16.58 centimeters (6.53 inch) HD+ multi-touch capacitive touchscreen with 1600 x 720 pixels resolution, 268 ppi pixel density and 20:9 aspect ratio', 69.99, '/static/products/redmi9A1.jpg', 'Mobiles', 40),
+    ('Samsung Galaxy M31 (Ocean Blue, 6GB RAM, 128GB Storage)', 'Quad Camera Setup - 64MP (F1.8) Main Camera +8MP (F2.2) Ultra Wide Camera +5MP(F2.2) Depth Camera +5MP(F2.4) Macro Camera and 32MP (F2.0) front facing Camera | 6.4-inch(16.21 centimeters) Super Amoled - Infinity U Cut Display , FHD+ Resolution (2340 x 1080) , 404 ppi pixel density and 16M color support', 149.99, '/static/products/SamsungM311.jpg', 'Mobiles', 50),
+    ('Apple iPhone 12 Pro Max (128GB)', '6.7-inch (17 cm diagonal) Super Retina XDR display | Ceramic Shield, tougher than any smartphone glass', 1199.99, '/static/products/iphone12M1.jpg', 'Mobiles', 1),
+    ('OnePlus Nord CE 5G (Charcoal Ink, 8GB RAM, 128GB Storage)', '64MP+8MP+2MP triple rear camera with 1080p video at 30/60 fps, 4k 30 fps | 16MP front camera with 1080p video at 30/60 fps | 6.43-inch, 90Hz fluid AMOLED display with 2400 x 1080 pixels resolution | 410ppi', 249.99, '/static/products/oneplusN1.jpg', 'Mobiles', 5),
+    ('Jio Phone 3 (Black, 4 MB RAM, 4GB Storage)', '2MP rear and 0.3MP front camera | Internal Storage 4GB', 19.99, '/static/products/jioPhone1.jpg', 'Mobiles', 50),
+    ('realme narzo 30 (Racing Blue, 6GB RAM, 128GB Storage)', '6 GB RAM | 128 GB ROM | Expandable Upto 256 GB | 16.51 cm (6.5 inch) Full HD+ Display', 149.99, '/static/products/realmeNazro1.jpg', 'Mobiles', 20),
+    ('OPPO A54 (Starry Blue, 4GB RAM, 128GB Storage)', '6.51 Inch (16.5cm) HD+ Puch-hole Display with 1600x720 pixels. Larger screen to body ratio of 89.2%.|Side Fingerprint Sensor. | MediaTek Helio P35 GPU IMG GE8320 @ 680 MHz| Powerful 2.3 GHz Octa-core processor, support LPDDR4X memory', 154.90, '/static/products/oppophone1.jpg', 'Mobiles', 2),
+    ('Vivo S1 Pro (Jazzy Blue, 8GB RAM, 128GB Storage)', '48+8+2+2MP rear camera | 32MP front camera Front camera | Memory, Storage & SIM: 8GB RAM, 128GB internal memory | Dual SIM (nano+nano) dual-standby (4G+4G)', 299.99, '/static/products/vivo1.jpg', 'Mobiles', 100),
+    ('Mi 11X 5G Cosmic Black 8GB RAM 128GB ROM', 'Processor: Qualcomm Snapdragon 870 5G with Kryo 585 Octa-core; 7nm process; Up to 3.2GHz clock speed; Liquidcool technology | Camera: 48 MP Triple Rear camera with 8MP Ultra-wide and 5MP Super macro | 20 MP Front camera', 319.99, '/static/products/miphone1.jpg', 'Mobiles', 8),
+    ('Apple iPhone XR (64GB) - White', '6.1-inch (15.5 cm diagonal) Liquid Retina HD LCD display | Water and dust resistant (1 meter for up to 30 minutes, IP67)', 419.99, '/static/products/iphonXR1.jpg', 'Mobiles', 8),
+    ('The Monk Who Sold His Ferrari', 'A renowned inspirational fiction, The Monk Who Sold His Ferrari is a revealing story that offers the readers a simple yet profound way to live life. The plot of this story revolves around Julian Mantl', 1.59, '/static/products/monksoldhisferrari.jpg', 'Books', 50),
+    ('The Immortals of Meluha (Shiva Trilogy)', 'The Immortals of Meluha is a series of short stories by the Indian author, K. S. Shukla, that tell the story of the Immortals of Meluha, who are the most powerful and powerful figures in the history o', 2.99, '/static/products/meluha.jpg', 'Books', 50),
+    ('Wuthering Heights (Emily Bronte)', 'Wuthering Heights is a story of love, hate, social status, and revenge set in the moorlands of Northern England at the end of the 18th century. The novel follows the repercussions of the ill-fated lov', 0.69, '/static/products/Wuthering.jpg', 'Books', 50),
+    ('Byomkesh Bakshi ki Rahasyamayi Kahaniyan', 'Famous detective stories in Hindi by Saradendu Bandyopadhyay. Classic mystery fiction.', 1.39, '/static/products/bumkeshbakshi.jpg', 'Books', 50),
+    ('Pride and Prejudice', 'The story follows the main character Elizabeth Bennet as she deals with issues of manners, upbringing, morality, education, and marriage in the society of the landed gentry of early 19th-century Engla', 0.79, '/static/products/prideandprejudice.jpg', 'Books', 50),
+    ('The Ultimate Hitchhikers Guide to the Galaxy: The Complete Trilogy in Five Parts', 'A phenomenon across all formats, this 42nd anniversary paperback omnibus contains the complete Hitchhikers Guide trilogy in five parts, charting the whole of Arthur Dents odyssey through space and t', 5.07, '/static/products/guidetogalaxy.jpg', 'Books', 27),
+    ('Green Humour for a Greying Planet', 'Green Humour For A Greying Planet is a curation of gag cartoons and comic strips based exclusively on wildlife and nature, perhaps the first of its kind. At a time when global warming, wildlife crimes', 2.58, '/static/products/greyhumour.jpg', 'Books', 17),
+    ('Sunderkand (Hindi) - Goswami Tulsidas', 'Sunderkand, believed to be the most beautiful (Sunder) part of the Ramayana, describes Lord Hanuman journey to Lanka. This book elucidates his pristine lifestyle, following which brings karmic and spi', 0.99, '/static/products/sunderkand.jpg', 'Books', 17),
+    ('Phir Meri Yaad - Hindi - Kumar Vishwas', 'Reading books is a kind of enjoyment. Reading books is a good habit. We bring you a different kinds of books. You can carry this book where ever you want. It is easy to carry. It can be an ideal gift ', 1.59, '/static/products/phirmeriyaad.jpg', 'Books', 7),
+    ('Kabir: The life and work of the early modern poet', 'As the right wing tries to claim Kabir for itself, while other conservatives disown him and yet others portray him as a secular idol beyond religion, the poet has never been so misunderstood. Coming f', 4.31, '/static/products/kabirkabir.jpg', 'Books', 9),
+    ('AEROPOSTALE Mens Casual Shirt', 'Size: Medium | Color name: Light Ceramic', 5.49, '/static/products/shirt.jpg', 'Clothings', 50),
+    ('ANNI DESIGNER Khadi Silk with Blouse Piece Saree', 'Saree Color: Beige and Red | Saree Fabric: Khadi Silk', 2.99, '/static/products/saaree.jpg', 'Clothings', 2),
+    ('Womens Stylish Plain Up and Down Cotton Tshirt', 'Fit Type: Regular Fit | Fabric Type: Cotton', 4.49, '/static/products/womentop.jpg', 'Clothings', 20),
+    ('Unisex-Baby Regular Vest (100% Cotton)', 'Fit Type: Regular | Fabric: Made by high quality natural skin friendly 100% tested cotton fabrics', 4.99, '/static/products/kidvest1.jpg', 'Clothings', 20),
+    ('Ben Martin Mens Regular Fit Denim Jeans', 'Size: 34 | Fit Type: Relaxed; Occasion: Casual', 6.98, '/static/products/mensjeans.jpg', 'Clothings', 9),
+    ('Puma Mens Regular T-Shirt', 'Size: 34 | Care Instructions: Machine Wash', 8.99, '/static/products/pumatshirt1.jpg', 'Clothings', 7),
+    ('Unisex Baby Infant Kids Costume Flannel Jumpsuit Panda Style Cosplay Clothes Bunting Outfits Snowsuit Hooded Romper Outwear', 'SIZE: 70cm, Fits for AGE: 0-6 Months | Premium Flannel Material: The Baby Costumes with Panda Hat are Crafted in soft flannel material that has a napped finish on both sides, high absorbent and breathable, cozy feel of this baby Pajamas to keep little baby warm and comfy all winter.', 12.99, '/static/products/babycostume.jpg', 'Clothings', 37),
+    ('Festive & Party Kurta Pyjama Set for Baby Boys (WKP)', 'Color: White | Occassion: Wedding, Party, Ceremony, Festival', 4.49, '/static/products/kidkurtha.jpg', 'Clothings', 14),
+    ('Womens Cotton Straight Kurta Pant With Dupatta Set', 'Fit Type: Regular | Fabric: Cambric Cotton 60x60', 10.49, '/static/products/womenkurtha.jpg', 'Clothings', 34),
+    ('Studio Shringaar Womens Green Pink Patola Printed Saree Blouse', 'Fit Type: Regular | A fully stitched blouse with short sleeves', 7.49, '/static/products/womenblouse.jpg', 'Clothings', 4),
+    ('Dove Deeply Nourishing Body Wash', 'Quantity: 800 ml | Nourishes deep into the surface layers of the skin', 3.24, '/static/products/dovebodylotion.jpg', 'Beauty', 34),
+    ('Park Avenue Good Morning Perfume Intense Body Spray, 150ml', 'Quantity: 150ml | Item Form: Spray', 1.59, '/static/products/parkavenueperfume.jpg', 'Beauty', 36),
+    ('NIVEA Men Deodorant Fresh Active Original, 150ml', 'Quantity: 150ml | Item Form: Spray', 2.99, '/static/products/fragrancedeonevia.jpg', 'Beauty', 15),
+    ('WOW Skin Science Apple Cider Vinegar Foaming Face Wash, 150ml', 'Quantity: 150ml | Skin Type: All Skin Types', 3.59, '/static/products/wowskincare.jpg', 'Beauty', 15),
+    ('Parachute jumbo pack 100% pure coconut oil, 600ml', 'Quantity: 600ml | Hair Type: All', 2.27, '/static/products/coconutoil.jpg', 'Beauty', 9),
+    ('The Body Shop British Rose Shower Gel, 250ml', 'Quantity: 250ml | Skin Type: Dry', 3.45, '/static/products/roseShowerGel.jpg', 'Beauty', 22),
+    ('Vaseline Intensive Care Deep Moisture Body Lotion, 400ml', 'Quantity: 400ml | Skin Type: All', 2.76, '/static/products/vaslinebodylotion.jpg', 'Beauty', 2),
+    ('LOreal Professionnel Steampod 3.0 Steam Hair Straightener & Styling Tool', 'Hair Type: All | SteamPod 3.0 by LOreal Professionnel is the 3rd generation of the original patented professional steam hair straightener & styling tool.', 248.00, '/static/products/Straightener1.jpg', 'Beauty', 20),
+    ('Lakme Eyeconic Kajal Twin Pack, Smudge Proof, Water Proof', 'Smudge proof and convenient twist- up format for deep stroke | Water proof, lasts up to 22 hrs', 2.68, '/static/products/kajal1.jpg', 'Beauty', 22),
+    ('O.P.I Nail Lacquer, Youre Such a Budapest, 15ml', 'Brand: O.P.I | Colour: Youre Such a Budapest', 8.50, '/static/products/nailpolsih1.jpg', 'Beauty', 5),
+    ('Umbrella Base Office Chair (Standard, Black)', 'Furniture Base: Swivel | Color: Black', 31.99, '/static/products/officechairumbrella.jpg', 'Furniture', 10),
+    ('Wood Study Desk(Wenge Finish,Wenge)', 'Item Dimensions: 103 x 40 x 73 Centimeters | Material: Engineered Wood', 37.75, '/static/products/desk.jpg', 'Furniture', 15),
+    ('King Size Sliding Door Bed with Box Storage', 'Size: King Size | Item Dimensions: 186 x 215 x 100.5 Centimeters', 219.50, '/static/products/bedwithstorage.jpg', 'Furniture', 15),
+    ('Home Centre Emily Fabric 5 Seater Sectional Sofa Set (Beige)', 'Seating Capacity: Five Seat | Seat filling: Foam with spring', 328.99, '/static/products/sofa1.jpg', 'Furniture', 11),
+    ('Solimo Pyxis Engineered Wood Wardrobe Mahogany, 2 Doors', 'Seating Capacity: Five Seat | Seat filling: Foam with spring', 90.89, '/static/products/wardrobe1.jpg', 'Furniture', 18),
+    ('HP 15 (2021) Thin & Light Ryzen 3-3250 Laptop, 8 GB RAM, 1TB HDD', 'Display: 15.6-inch FHD (1920 x 1080), IPS, micro-edge, anti-glare, 250 nits, 45% NTSC | Processor: AMD Ryzen 3', 375.90, '/static/products/studentLaptophp1.jpg', 'Laptops', 11),
+    ('Dell Inspiron 3501 15.6 FHD Display Laptop (i3-1115G4 / 4GB / 256GB SSD)', 'Processor:11th Generation Intel Core i3-1115G4 Processor (6MB Cache, up to 4.1 GHz) | Memory & Storage: 4GB, 4Gx1, DDR4, 2666MHz | 256GB M.2 PCIe NVMe Solid State Drive', 388.90, '/static/products/travelLaptop1.jpg', 'Laptops', 19),
+    ('Lenovo IdeaPad Slim 3 10th Gen Intel Core i5 15.6 Full HD IPS Thin and Light Laptop', 'Processor: 10th Gen Intel Core i5-1035G1 | Speed: 1.0 GHz (Base) - 3.6 GHz (Max) | 4 Cores | 6MB Cache | OS: Pre-Loaded Windows 10 Home with Lifetime Validity', 572.00, '/static/products/codingLaptop1.jpg', 'Laptops', 29),
+    ('ASUS ROG Zephyrus G14, 14 QHD, Ryzen 9 4900HS, GTX 1660Ti Max-Q 6GB GDDR6 Graphics, Gaming Laptop', 'Processor: AMD Ryzen 9 4900HS Processor, 3.0 GHz (8MB Cache, up to 4.3 GHz, 8 Cores, 16 Threads) | Memory: 16GB (2x 8GB) DDR4 3200MHz Dual-Channel RAM, Upgradeable up to 24GB using 1x SO-DIMM Slot', 1119.90, '/static/products/gamingLaptop1.jpg', 'Laptops', 9),
+    ('Apple MacBook Pro 2019 (16-inch/40.65 cm, 16GB RAM, 1TB Storage, 2.3GHz 9th Gen Intel Core i9) - Space Grey', 'Processor: Ninth-generation 8-core Intel Core i9 processor | Memory: Stunning 40.65cm (16-inch) Retina display with True Tone technology', 2154.90, '/static/products/appleLaptop1.jpg', 'Laptops', 2)
+    ON CONFLICT (id) DO NOTHING;
+  02_update_prices.sql: |
+    -- Update prices to realistic Indian Rupees (INR) and refresh descriptions
+    -- Mobiles
+    UPDATE products SET price = 6999.00, description = '13MP AI rear camera with portrait, scene recognition, HDR, pro mode | 5MP front camera | 6.53-inch HD+ display, 1600x720, 268ppi | 5000mAh battery | MediaTek Helio G25 processor' WHERE id = 1;
+    UPDATE products SET price = 14999.00, description = '64MP Quad Camera (F1.8 Main + 8MP Ultra Wide + 5MP Depth + 5MP Macro) | 32MP front camera | 6.4-inch Super AMOLED FHD+ Infinity-U display | 6000mAh battery | Exynos 9611 processor' WHERE id = 2;
+    UPDATE products SET price = 119900.00, description = '6.7-inch Super Retina XDR OLED display | A14 Bionic chip | Pro camera system: 12MP Ultra Wide, Wide, Telephoto | Ceramic Shield front | 5G capable | Dolby Vision HDR recording' WHERE id = 3;
+    UPDATE products SET price = 22999.00, description = '64MP+8MP+2MP triple rear camera, 4K 30fps | 16MP front camera | 6.43-inch 90Hz AMOLED, 2400x1080 | Snapdragon 750G 5G | 4500mAh with 30W Warp Charge' WHERE id = 4;
+    UPDATE products SET price = 4499.00, description = '2MP rear camera | 0.3MP front camera | 4GB internal storage | 2.4-inch display | KaiOS smart features | VoLTE support | FM Radio | Jio apps pre-installed' WHERE id = 5;
+    UPDATE products SET price = 11999.00, description = '6GB RAM | 128GB ROM expandable to 256GB | 6.5-inch FHD+ display | MediaTek Helio G95 processor | 48MP AI Triple Camera | 5000mAh battery with 30W Dart Charge' WHERE id = 6;
+    UPDATE products SET price = 12490.00, description = '6.51-inch HD+ punch-hole display, 1600x720, 89.2% ratio | Side fingerprint sensor | MediaTek Helio P35, 2.3GHz octa-core | 5000mAh battery | 4GB RAM, 128GB storage' WHERE id = 7;
+    UPDATE products SET price = 19990.00, description = '48+8+2+2MP quad rear camera | 32MP front camera | 6.38-inch Super AMOLED FHD+ display | Snapdragon 665 | 8GB RAM, 128GB storage | 3700mAh battery with 18W Dual Engine Fast Charging' WHERE id = 8;
+    UPDATE products SET price = 26999.00, description = 'Qualcomm Snapdragon 870 5G, 7nm, up to 3.2GHz | 48MP Triple Camera (8MP ultra-wide, 5MP macro) | 20MP front | 6.67-inch 120Hz AMOLED E4 | 4520mAh with 33W fast charging' WHERE id = 9;
+    UPDATE products SET price = 36999.00, description = '6.1-inch Liquid Retina HD LCD display | A12 Bionic chip | 12MP wide camera with OIS | Face ID | IP67 water resistant | Wireless charging | Available in 6 colors' WHERE id = 10;
+
+    -- Books
+    UPDATE products SET price = 199.00, description = 'A fable about fulfilling your dreams and reaching your destiny by Robin Sharma. Follow Julian Mantle, a lawyer forced to confront the spiritual crisis of his out-of-balance life.' WHERE id = 11;
+    UPDATE products SET price = 250.00, description = 'First book of the Shiva Trilogy by Amish Tripathi. Set in 1900 BC in the land of Meluha, it follows a Tibetan immigrant named Shiva who discovers his destiny as the prophesied Neelkanth.' WHERE id = 12;
+    UPDATE products SET price = 99.00, description = 'Emily Bronte classic novel of passionate love and revenge on the Yorkshire moors. The turbulent romance between Heathcliff and Catherine Earnshaw remains one of literature greatest love stories.' WHERE id = 13;
+    UPDATE products SET price = 175.00, description = 'Collection of gripping detective stories featuring Byomkesh Bakshi by Sharadindu Bandyopadhyay. Hindi edition with classic Bengali mystery tales of India most beloved sleuth.' WHERE id = 14;
+    UPDATE products SET price = 129.00, description = 'Jane Austen masterpiece exploring themes of love, reputation, and class in Regency-era England. Follow Elizabeth Bennet and Mr. Darcy in this witty and romantic classic.' WHERE id = 15;
+    UPDATE products SET price = 599.00, description = 'Complete omnibus edition containing all five Hitchhiker novels by Douglas Adams. The ultimate guide to life, the universe, and everything — 42nd anniversary edition.' WHERE id = 16;
+    UPDATE products SET price = 299.00, description = 'Award-winning collection of environmental cartoons and comic strips by Rohan Chakravarty. Sharp wit meets conservation awareness in this unique nature-themed humor book.' WHERE id = 17;
+    UPDATE products SET price = 120.00, description = 'The most beautiful chapter of Ramayana by Goswami Tulsidas. Describes Lord Hanuman journey to Lanka. Hindi edition with detailed commentary and spiritual insights.' WHERE id = 18;
+    UPDATE products SET price = 199.00, description = 'Bestselling Hindi poetry collection by Dr. Kumar Vishwas. Romantic and patriotic verses that have captivated millions across India. Perfect gift for poetry lovers.' WHERE id = 19;
+    UPDATE products SET price = 450.00, description = 'Scholarly work exploring the life, poetry, and philosophy of the 15th-century mystic poet Kabir. Examines his influence across Hindu, Muslim, and Sikh traditions.' WHERE id = 20;
+
+    -- Clothings
+    UPDATE products SET price = 799.00, description = 'Premium casual shirt for men by Aeropostale. Size: Medium | Color: Light Ceramic | Soft cotton blend fabric | Regular fit | Button-down collar | Machine washable' WHERE id = 21;
+    UPDATE products SET price = 1499.00, description = 'Elegant Khadi Silk saree with unstitched blouse piece by Anni Designer. Color: Beige and Red | Fabric: Pure Khadi Silk | Traditional Indian weave | Perfect for festivals and weddings' WHERE id = 22;
+    UPDATE products SET price = 449.00, description = 'Stylish cotton t-shirt for women with trendy up-and-down hem design. Regular fit | 100% cotton | Breathable and comfortable | Available in multiple colors | Casual everyday wear' WHERE id = 23;
+    UPDATE products SET price = 399.00, description = 'Soft cotton vest for babies, unisex design. 100% skin-friendly tested cotton | Comfortable regular fit | Easy snap buttons | Pack of 3 | Machine washable | Sizes: 0-24 months' WHERE id = 24;
+    UPDATE products SET price = 899.00, description = 'Classic relaxed-fit denim jeans for men by Ben Martin. Size: 34 | 100% cotton denim | 5-pocket styling | Casual wear | Durable construction | Machine washable' WHERE id = 25;
+    UPDATE products SET price = 1299.00, description = 'Official Puma regular-fit t-shirt for men. Dri-fit moisture-wicking technology | Puma cat logo branding | Soft cotton-polyester blend | Machine washable | Sports and casual wear' WHERE id = 26;
+    UPDATE products SET price = 1099.00, description = 'Adorable panda-style flannel jumpsuit for babies 0-6 months. Premium soft flannel | Hooded romper with panda ears | Full-body warmth | Snap button closure | Perfect winter outfit' WHERE id = 27;
+    UPDATE products SET price = 649.00, description = 'Festive kurta pyjama set for baby boys. Color: White | Ideal for weddings, parties, ceremonies, and festivals | Soft cotton fabric | Traditional Indian ethnic wear | Sizes: 6M-4Y' WHERE id = 28;
+    UPDATE products SET price = 1399.00, description = 'Complete set: Straight kurta + pant + dupatta for women. Fabric: Cambric Cotton 60x60 | Regular fit | Elegant embroidery work | Perfect for daily and semi-formal wear' WHERE id = 29;
+    UPDATE products SET price = 899.00, description = 'Fully stitched saree blouse in green-pink Patola print by Studio Shringaar. Regular fit | Short sleeves | Premium fabric | Ready to wear | Pairs with silk and cotton sarees' WHERE id = 30;
+
+    -- Beauty
+    UPDATE products SET price = 435.00, description = 'Dove Deeply Nourishing Body Wash 800ml. NutriumMoisture technology nourishes deep into skin surface layers. Sulfate-free, mild cleansers. Dermatologically tested for sensitive skin.' WHERE id = 31;
+    UPDATE products SET price = 199.00, description = 'Park Avenue Good Morning Perfume Intense Body Spray 150ml. Long-lasting fresh fragrance | Ideal for daily use | Dermatologically tested | Premium masculine scent for all-day confidence' WHERE id = 32;
+    UPDATE products SET price = 249.00, description = 'NIVEA Men Fresh Active Original Deodorant 150ml. 48-hour freshness protection | Ocean extracts fragrance | Quick-dry formula | 0% alcohol | Skin-friendly and dermatologically tested' WHERE id = 33;
+    UPDATE products SET price = 349.00, description = 'WOW Apple Cider Vinegar Foaming Face Wash 150ml with built-in brush. For all skin types | No parabens, sulphates, silicones | Removes dirt and excess oil | Natural ACV formula' WHERE id = 34;
+    UPDATE products SET price = 225.00, description = 'Parachute 100% Pure Coconut Oil 600ml jumbo pack. Cold-pressed from hand-picked coconuts | Nourishes hair and skin | No added preservatives | Trusted by Indian families for generations' WHERE id = 35;
+    UPDATE products SET price = 395.00, description = 'The Body Shop British Rose Shower Gel 250ml. Hand-picked rose essence from England | Gently cleanses and softens skin | Floral fragrance | Suitable for dry skin | Vegan and cruelty-free' WHERE id = 36;
+    UPDATE products SET price = 299.00, description = 'Vaseline Intensive Care Deep Moisture Body Lotion 400ml. Healing micro-droplets of Vaseline Jelly | Heals dry skin in 5 days | Non-greasy, fast-absorbing | Dermatologically tested' WHERE id = 37;
+    UPDATE products SET price = 19500.00, description = 'LOreal Professionnel Steampod 3.0 — professional steam hair straightener. 2x smoother hair | Patented steam technology | Ceramic plates | 3 temperature settings | Suitable for all hair types' WHERE id = 38;
+    UPDATE products SET price = 275.00, description = 'Lakme Eyeconic Kajal Twin Pack. Smudge-proof, waterproof formula lasting up to 22 hours | Deep black intense color | Twist-up format | Ophthalmologically tested | Dermatologically safe' WHERE id = 39;
+    UPDATE products SET price = 850.00, description = 'O.P.I Nail Lacquer 15ml — shade: You are Such a Budapest. Chip-resistant professional formula | Rich, long-lasting color | ProWide brush for easy application | Salon-quality finish' WHERE id = 40;
+
+    -- Furniture
+    UPDATE products SET price = 4999.00, description = 'Ergonomic office chair with umbrella base. 360-degree swivel | Height adjustable | Breathable mesh back | Cushioned seat | Durable nylon casters | Max load: 120kg | Black color' WHERE id = 41;
+    UPDATE products SET price = 5499.00, description = 'Compact study desk in Wenge finish. Engineered wood construction | Dimensions: 103x40x73cm | Spacious work surface | Cable management hole | Modern minimalist design | Easy assembly' WHERE id = 42;
+    UPDATE products SET price = 24999.00, description = 'King size bed with sliding door box storage. Dimensions: 186x215x100.5cm | Engineered wood frame | Hydraulic lift storage | Modern headboard design | Mattress size: 72x78 inches' WHERE id = 43;
+    UPDATE products SET price = 42999.00, description = 'Premium 5-seater L-shaped sectional sofa by Home Centre. Fabric: Beige polyester | Foam + spring seat filling | Solid wood frame | Includes 5 cushions | Dimensions: 269x167x85cm' WHERE id = 44;
+    UPDATE products SET price = 11999.00, description = 'Solimo Pyxis 2-door wardrobe in Mahogany finish. Engineered wood | 4 shelves + hanging rod | Mirror on door | Dimensions: 80x47x175cm | Easy self-assembly | 1-year warranty' WHERE id = 45;
+
+    -- Laptops
+    UPDATE products SET price = 34990.00, description = 'HP 15 thin and light laptop. AMD Ryzen 3-3250U processor | 8GB RAM | 1TB HDD | 15.6-inch FHD IPS anti-glare display | AMD Radeon Graphics | Windows 11 | Dual speakers | 41Wh battery' WHERE id = 46;
+    UPDATE products SET price = 38990.00, description = 'Dell Inspiron 3501 laptop. 11th Gen Intel Core i3-1115G4, up to 4.1GHz | 4GB DDR4 RAM | 256GB NVMe SSD | 15.6-inch FHD display | Intel UHD Graphics | Windows 11 | 42WHr battery' WHERE id = 47;
+    UPDATE products SET price = 52990.00, description = 'Lenovo IdeaPad Slim 3. 10th Gen Intel Core i5-1035G1, up to 3.6GHz | 8GB DDR4 RAM | 512GB SSD | 15.6-inch FHD IPS display | Intel UHD Graphics | Windows 10 Home | Dolby Audio' WHERE id = 48;
+    UPDATE products SET price = 109990.00, description = 'ASUS ROG Zephyrus G14 gaming laptop. AMD Ryzen 9 4900HS, up to 4.3GHz | 16GB DDR4 3200MHz | 512GB NVMe SSD | 14-inch QHD 60Hz | NVIDIA GTX 1660Ti Max-Q 6GB | AniMe Matrix LED lid' WHERE id = 49;
+    UPDATE products SET price = 199990.00, description = 'Apple MacBook Pro 16-inch (2019). 9th Gen Intel Core i9, 2.3GHz 8-core | 16GB DDR4 RAM | 1TB SSD | AMD Radeon Pro 5500M 4GB | 16-inch Retina display | Touch Bar | 100Wh battery, up to 11hrs' WHERE id = 50;
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lab-app-secrets
+  namespace: ecommerce-lab
+type: Opaque
+stringData:
+  POSTGRES_DB: ecommerce
+  POSTGRES_USER: ecommerce
+  POSTGRES_PASSWORD: password
+  SECRET_KEY: lab-secret-key-change-me
+  DATABASE_URL: postgresql://ecommerce:password@database:5432/ecommerce
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database
+  namespace: ecommerce-lab
+spec:
+  selector:
+    app: database
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: database
+  namespace: ecommerce-lab
+spec:
+  serviceName: database
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+        tier: data
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: lab-app-secrets
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: lab-app-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lab-app-secrets
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: db-init
+              mountPath: /docker-entrypoint-initdb.d
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 20
+            periodSeconds: 20
+      volumes:
+        - name: db-init
+          configMap:
+            name: lab-db-init
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: application
+  namespace: ecommerce-lab
+spec:
+  selector:
+    app: application
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: application
+  namespace: ecommerce-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: application
+  template:
+    metadata:
+      labels:
+        app: application
+        tier: backend
+    spec:
+      containers:
+        - name: application
+          image: narendra-geddam/ecommerce-application:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: lab-app-secrets
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lab-app-secrets
+                  key: SECRET_KEY
+            - name: FLASK_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: lab-app-config
+                  key: FLASK_ENV
+            - name: FLASK_DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: lab-app-config
+                  key: FLASK_DEBUG
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: lab-app-config
+                  key: LOG_LEVEL
+            - name: SERVICE_NAME
+              value: flask
+            - name: SERVICE_TIER
+              value: backend
+            - name: REPLICAS
+              value: "1"
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: presentation
+  namespace: ecommerce-lab
+spec:
+  type: NodePort
+  selector:
+    app: presentation
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: presentation
+  namespace: ecommerce-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: presentation
+  template:
+    metadata:
+      labels:
+        app: presentation
+        tier: frontend
+    spec:
+      containers:
+        - name: presentation
+          image: narendra-geddam/ecommerce-presentation:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: SERVICE_NAME
+              value: nginx
+            - name: SERVICE_TIER
+              value: frontend
+            - name: REPLICAS
+              value: "1"
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 20
